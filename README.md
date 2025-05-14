@@ -1,57 +1,73 @@
 # Obsidian Diary ICS
 
-这是一个Obsidian插件，用于将Obsidian的日记系统内容同步到系统的日历应用中（如macOS日历、Windows日历等）。
+[中文](README_zh.md) | [English](README.md)
 
-## 核心功能
+This is an Obsidian plugin that synchronizes content from Obsidian's diary system to the system calendar application (such as macOS Calendar, Windows Calendar, etc.).
 
-### 生成ICS日历订阅文件
-- 插件会根据Obsidian中的日记内容，自动生成一个ICS格式的日历订阅文件（.ics）
-- 该文件将被托管在本地的一个HTTP端口上（例如：`http://127.0.0.1:19347/feed.ics`）
-- 系统日历应用可以订阅这个链接，从而实时同步Obsidian的日记内容到系统日历中
+## Core Features
 
-### 日记内容解析规则
-- 插件会解析Obsidian中的日记笔记文件（通常是按日期命名的Markdown文件）
-- 从这些文件中提取出一级或二级标题（由用户配置）
-- 每个提取出的标题将作为一条日历条目，对应当天（即文件名中的日期）
+### Generate ICS Calendar Subscription File
+- The plugin automatically generates an ICS format calendar subscription file (.ics) based on Obsidian's diary content
+- The file will be hosted on a local HTTP port (e.g., `http://127.0.0.1:19347/feed.ics`) (you can also check the local network IP to use it for subscription on other devices in the same network)
+- System calendar applications can subscribe to this link to synchronize Obsidian's diary content with the system calendar in real time
 
-### 日历条目详情
-每个日历条目（事件）将包含以下内容：
-- **标题**：从日记文件中提取的一级或二级标题
-- **备注（Description）**：包含一个可点击的链接，格式为：`obsidian://open?vault=你的库名&file=日记文件路径`，点击后可以直接跳转回Obsidian的对应日记文件中
+### Diary Content Parsing Rules
+- The plugin parses Obsidian's diary note files (usually Markdown files named by date)
+- Extracts primary or secondary level headings (configured by the user)
+- Each extracted heading becomes a calendar entry corresponding to the date in the filename
 
-## 示例说明
+### Calendar Entry Details
+Each calendar entry (event) will contain:
+- **Title**: Primary or secondary level heading extracted from the diary file
+- **Link (URL)**: A clickable link 
+  - Format: `obsidian://open?vault=YourVaultName&file=DiaryFilePath`
+  - Clicking it directly jumps back to the corresponding diary file in Obsidian
+- **Description**:
+  - Contains all subheadings under the extracted heading
 
-假设你有一个日记文件：`2025-05-14.md`，内容如下：
+### Frontmatter
+If the diary has frontmatter fields, the plugin concatenates the day's frontmatter into a text output as an additional event.
+By default, each property is displayed on a separate line as the event description.
+Custom rules can be edited, for example: `weather:{{weather}} mood:{{mood}}` to extract weather and mood properties from frontmatter.
+
+## Example Explanation
+
+Assume you have a diary file: `2025-05-14.md` with the following content:
 
 ```markdown
-# 今天的工作总结
+# Today's Work Summary
 
-## 上午任务
-- 完成项目A的模块1
+## Morning Tasks
+- Complete Module 1 of Project A
 
-## 下午任务
-- 与团队开会讨论需求
+### Plan with R&D
+- Complete Module B
+- Contact Client
+
+## Afternoon Tasks
+- Meet with team to discuss requirements
 ```
 
-用户在插件设置中设置了提取所有二级标题。则，插件会提取出两个日历条目：
-- 事件1：标题为"上午任务"，备注中包含链接
-- 事件2：标题为"下午任务"，备注中包含链接
+If the user sets the plugin to extract all secondary level headings:
 
-系统日历订阅了 `http://127.0.0.1:19347/feed.ics` 后，就能看到这两个事件。
+The plugin will extract two calendar entries:
+- Event 1: Title "Morning Tasks", description includes "Plan with R&D", link to the diary
+- Event 2: Title "Afternoon Tasks", description is empty, link to the diary
 
-## 使用方法
+After subscribing to `http://127.0.0.1:99347/feed.ics` in the system calendar, you can see these two events.
 
-1. 在Obsidian中安装并启用此插件
-2. 在插件设置中配置：
-   - 要提取的标题级别（一级或二级标题）
-   - HTTP服务器端口（默认为19347）
-3. 复制插件提供的ICS订阅链接
-4. 在系统日历应用中添加该订阅链接
-5. 现在，你的Obsidian日记内容将自动同步到系统日历中
+## Usage Instructions
 
-## 开发信息
+1. Install and enable this plugin in Obsidian
+2. Configure in plugin settings:
+   - Heading level to extract (primary or secondary)
+   - HTTP server port (default 19347)
+3. Copy the ICS subscription link provided by the plugin
+4. Add this subscription link in your system calendar application
+5. Now your Obsidian diary content will be automatically synchronized to the system calendar
 
-- 本插件使用TypeScript开发
-- 使用Obsidian API访问日记文件内容并监听文件变化
-- 启动本地HTTP服务器提供ICS文件
-- 按照ICS标准生成日历文件
+## Development Information
+
+- This plugin is developed using TypeScript
+- Starts a local HTTP server to provide ICS files
+- Generates calendar files according to the ICS standard
