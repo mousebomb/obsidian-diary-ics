@@ -1,7 +1,7 @@
 {
 	"id": "diary-ics",
 	"name": "Diary ICS",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Sync Obsidian diary entries to system calendar via ICS feed. 将Obsidian日记内容同步到系统日历应用中，通过ICS订阅链接实现实时同步。",
 	"author": "Obsidian",
