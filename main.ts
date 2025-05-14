@@ -130,7 +130,7 @@ export default class DiaryIcsPlugin extends Plugin {
 	getDailyNoteSettings() {
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { internalPlugins } = window.app as any;
+			const { internalPlugins } = (window as any )["app"];
 			const { folder, format, template } = internalPlugins.getPluginById("daily-notes")?.instance?.options || {};
 			return {
 				format: format || DEFAULT_DAILY_NOTE_FORMAT,
