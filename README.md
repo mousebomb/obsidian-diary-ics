@@ -1,94 +1,57 @@
-# Obsidian Sample Plugin
+# Obsidian Diary ICS
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+这是一个Obsidian插件，用于将Obsidian的日记系统内容同步到系统的日历应用中（如macOS日历、Windows日历等）。
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## 核心功能
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+### 生成ICS日历订阅文件
+- 插件会根据Obsidian中的日记内容，自动生成一个ICS格式的日历订阅文件（.ics）
+- 该文件将被托管在本地的一个HTTP端口上（例如：`http://127.0.0.1:19347/feed.ics`）
+- 系统日历应用可以订阅这个链接，从而实时同步Obsidian的日记内容到系统日历中
 
-## First time developing plugins?
+### 日记内容解析规则
+- 插件会解析Obsidian中的日记笔记文件（通常是按日期命名的Markdown文件）
+- 从这些文件中提取出一级或二级标题（由用户配置）
+- 每个提取出的标题将作为一条日历条目，对应当天（即文件名中的日期）
 
-Quick starting guide for new plugin devs:
+### 日历条目详情
+每个日历条目（事件）将包含以下内容：
+- **标题**：从日记文件中提取的一级或二级标题
+- **备注（Description）**：包含一个可点击的链接，格式为：`obsidian://open?vault=你的库名&file=日记文件路径`，点击后可以直接跳转回Obsidian的对应日记文件中
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## 示例说明
 
-## Releasing new releases
+假设你有一个日记文件：`2025-05-14.md`，内容如下：
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+```markdown
+# 今天的工作总结
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+## 上午任务
+- 完成项目A的模块1
 
-## Adding your plugin to the community plugin list
-
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+## 下午任务
+- 与团队开会讨论需求
 ```
 
-If you have multiple URLs, you can also do:
+用户在插件设置中设置了提取所有二级标题。则，插件会提取出两个日历条目：
+- 事件1：标题为"上午任务"，备注中包含链接
+- 事件2：标题为"下午任务"，备注中包含链接
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+系统日历订阅了 `http://127.0.0.1:19347/feed.ics` 后，就能看到这两个事件。
 
-## API Documentation
+## 使用方法
 
-See https://github.com/obsidianmd/obsidian-api
+1. 在Obsidian中安装并启用此插件
+2. 在插件设置中配置：
+   - 要提取的标题级别（一级或二级标题）
+   - HTTP服务器端口（默认为19347）
+3. 复制插件提供的ICS订阅链接
+4. 在系统日历应用中添加该订阅链接
+5. 现在，你的Obsidian日记内容将自动同步到系统日历中
+
+## 开发信息
+
+- 本插件使用TypeScript开发
+- 使用Obsidian API访问日记文件内容并监听文件变化
+- 启动本地HTTP服务器提供ICS文件
+- 按照ICS标准生成日历文件
