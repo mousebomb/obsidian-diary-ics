@@ -7,6 +7,8 @@ interface DiaryIcsSettings {
 	headingLevel: string;
 	includeSubheadings: boolean;
 	includeContent: boolean;
+	includeFrontmatter: boolean;
+	frontmatterTemplate: string;
 }
 
 const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
@@ -15,7 +17,9 @@ const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	port: 19347,
 	headingLevel: 'h2',
 	includeSubheadings: true,
-	includeContent: false
+	includeContent: false,
+	includeFrontmatter: false,
+	frontmatterTemplate: ''
 }
 
 export default class DiaryIcsPlugin extends Plugin {
@@ -168,6 +172,7 @@ export default class DiaryIcsPlugin extends Plugin {
 
 	// 解析日记文件，提取标题和次级标题
 	async parseDiaryFile(file: TFile): Promise<{title: string, content: string, subheadings: string[]}[]> {
+		
 		const content = await this.app.vault.read(file);
 		const entries: {title: string, content: string, subheadings: string[]}[] = [];
 		
@@ -250,6 +255,59 @@ export default class DiaryIcsPlugin extends Plugin {
 			const day = date.date();
 			const entries = await this.parseDiaryFile(file);
 			console.log (" 解析日记文件: ", file.path, " 解析条目: ", entries.length, " 条");
+
+			// 处理frontmatter，如果设置了包含frontmatter
+			if (this.settings.includeFrontmatter) {
+				const fileCache = this.app.metadataCache.getFileCache(file);
+				if (fileCache?.frontmatter) {
+					// 创建frontmatter事件描述
+					let frontmatterDescription = '';
+					const frontmatter = fileCache.frontmatter;
+					
+					// 使用模板格式化frontmatter内容
+					if (this.settings.frontmatterTemplate) {
+						// 解析模板中的变量
+						const template = this.settings.frontmatterTemplate;
+						// 由模板生成的结果
+						let lines = template;
+						
+						// 检查模板是否包含特定字段的格式
+						if (template.includes('{{')) {
+							// 模板包含变量，按照模板格式化
+							for (const key in frontmatter) {
+								if (key === 'position') continue; // 跳过position字段
+								// 替换特定字段，如{{fieldName}}
+								lines = lines.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(frontmatter[key]));
+							}
+						} else {
+							// 模板不包含变量，直接使用模板
+							lines = template;
+						}
+						
+						frontmatterDescription += lines;
+					} else {
+						// 没有模板，使用默认格式（每行一个字段）
+						for (const key in frontmatter) {
+							if (key === 'position') continue; // 跳过position字段
+							frontmatterDescription += `${key}: ${frontmatter[key]}\n`;
+						}
+					}
+					
+					// 创建frontmatter事件
+					if (frontmatterDescription) {
+						events.push({
+							title: `${file.basename}[frontmatter]`,
+							url: `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}`,
+							description: frontmatterDescription,
+							start: [year, month, day],
+							duration: {days: 1}, // 默认为全天事件
+							status: 'CONFIRMED',
+							busyStatus: 'FREE'
+						});
+					}
+				}
+			}
+			
 			for (const entry of entries) {
 				// 构建描述内容
 				let description = '';
@@ -319,6 +377,8 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					}
 				}));
 
+		containerEl.createEl('h3', {text: '内容设置'});
+
 		new Setting(containerEl)
 			.setName('标题级别')
 			.setDesc('从日记中提取哪一级标题作为日历条目')
@@ -350,6 +410,37 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeContent = value;
 					await this.plugin.saveSettings();
 				}));
+				
+		containerEl.createEl('h3', {text: 'Frontmatter设置'});
+		
+		new Setting(containerEl)
+			.setName('包含Frontmatter')
+			.setDesc('将日记文件的Frontmatter内容作为单独的日历事件')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeFrontmatter)
+				.onChange(async (value) => {
+					this.plugin.settings.includeFrontmatter = value;
+					await this.plugin.saveSettings();
+				}));
+				
+		new Setting(containerEl)
+			.setName('Frontmatter模板')
+			.setDesc('自定义Frontmatter内容的显示格式，可直接使用{{字段名}}引用特定字段')
+			.addText(text => text
+				.setPlaceholder('')
+				.setValue(this.plugin.settings.frontmatterTemplate)
+				.onChange(async (value) => {
+					this.plugin.settings.frontmatterTemplate = value;
+					await this.plugin.saveSettings();
+				}));
+				
+		const templateExample = containerEl.createEl('div', {text: '模板示例：'});
+		templateExample.style.padding = '5px';
+		templateExample.style.fontSize = '0.8em';
+		templateExample.style.color = '#888';
+		templateExample.createEl('div', {text: '1. 使用 "天气:{{weather}} 心情:{{mood}}" 将替换特定字段'});
+		templateExample.createEl('div', {text: '2. 留空则每行显示一个字段'});
+		templateExample.style.marginBottom = '20px';
 
 		// 显示当前ICS订阅链接
 		containerEl.createEl('h3', {text: 'ICS订阅链接'});
