@@ -1,6 +1,6 @@
 # Obsidian Diary ICS
 
-[中文](README_zh.md) | [English](README.md)
+[中文](README_zh.md) | English
 
 This is an Obsidian plugin that synchronizes content from Obsidian's diary system to the system calendar application (such as macOS Calendar, Windows Calendar, etc.).
 

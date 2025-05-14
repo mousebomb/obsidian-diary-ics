@@ -1,6 +1,6 @@
 # Obsidian Diary ICS
 
-[中文](README_zh.md) | [English](README.md)
+中文 | [English](README.md)
 
 这是一个Obsidian插件，用于将Obsidian的日记系统内容同步到系统的日历应用中（如macOS日历、Windows日历等）。
 
