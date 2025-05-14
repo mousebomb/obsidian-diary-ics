@@ -11,7 +11,7 @@ interface DiaryIcsSettings {
 const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	port: 19347,
 	headingLevel: 'h2',
-	includeContent: true
+	includeContent: false
 }
 
 export default class DiaryIcsPlugin extends Plugin {
@@ -192,10 +192,12 @@ export default class DiaryIcsPlugin extends Plugin {
 				// 创建事件
 				events.push({
 					title: entry.title,
+					url: `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}`,
 					description: this.settings.includeContent 
 						? `${entry.content}\n\n点击打开: obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}` 
 						: `点击打开: obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}`,
 					start: [year, month, day],
+					duration: {days: 1}, // 默认为全天事件
 					status: 'CONFIRMED',
 					busyStatus: 'FREE'
 				});
