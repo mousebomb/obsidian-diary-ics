@@ -8,6 +8,8 @@ interface DiaryIcsSettings {
 	includeContent: boolean;
 }
 
+const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
+
 const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	port: 19347,
 	headingLevel: 'h2',
@@ -17,9 +19,16 @@ const DEFAULT_SETTINGS: DiaryIcsSettings = {
 export default class DiaryIcsPlugin extends Plugin {
 	settings: DiaryIcsSettings;
 	server: http.Server | null = null;
+	dailyNoteFormat: string = DEFAULT_DAILY_NOTE_FORMAT;
+	dailyNoteFolder: string = "";
 
 	async onload() {
 		await this.loadSettings();
+		
+		// 读取daily-notes插件设置
+		const dailyNoteSettings = this.getDailyNoteSettings();
+		this.dailyNoteFormat = dailyNoteSettings.format;
+		this.dailyNoteFolder = dailyNoteSettings.folder;
 
 		// 添加图标到左侧边栏
 		const ribbonIconEl = this.addRibbonIcon('calendar-with-checkmark', 'Diary ICS', (evt: MouseEvent) => {
@@ -119,41 +128,95 @@ export default class DiaryIcsPlugin extends Plugin {
 		});
 	}
 
-	// 判断文件是否为日记文件（基于文件名格式：YYYY-MM-DD.md）
-	isDiaryFile(file: TFile): boolean {
-		return file.extension === 'md' && /^\d{4}-\d{2}-\d{2}$/.test(file.basename);
+	// 读取daily-notes插件设置
+	getDailyNoteSettings() {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const { internalPlugins } = window.app as any;
+			const { folder, format, template } = internalPlugins.getPluginById("daily-notes")?.instance?.options || {};
+			return {
+				format: format || DEFAULT_DAILY_NOTE_FORMAT,
+				folder: folder?.trim() || "",
+				template: template?.trim() || "",
+			};
+		} catch (err) {
+			console.info("无法读取daily-notes插件设置，使用默认设置", err);
+			return {
+				format: DEFAULT_DAILY_NOTE_FORMAT,
+				folder: "",
+				template: "",
+			};
+		}
 	}
 
-	// 解析日记文件，提取标题
-	async parseDiaryFile(file: TFile): Promise<{title: string, content: string}[]> {
+	// 判断文件是否为日记文件（基于daily-notes插件设置或默认格式）
+	isDiaryFile(file: TFile): boolean {
+		// 检查文件扩展名
+		if (file.extension !== 'md') return false;
+		
+		// 检查文件是否在日记文件夹中
+		const matchFolder = this.dailyNoteFolder ==="/" ? "" : this.dailyNoteFolder;
+		if (this.dailyNoteFolder && !file.path.startsWith(matchFolder)) return false;
+		
+		// 使用moment库验证文件名是否符合日期格式
+		// @ts-ignore - window.moment 在Obsidian中已经内置
+		const moment = window.moment;
+		if (!moment) {
+			console.error("无法获取moment库");
+			return false;
+		}
+
+		// 尝试使用daily-notes插件的格式解析文件名
+		const date = moment(file.basename, this.dailyNoteFormat, true);
+		return date.isValid();
+	}
+	
+
+	// 解析日记文件，提取标题和次级标题
+	async parseDiaryFile(file: TFile): Promise<{title: string, content: string, subheadings: string[]}[]> {
 		const content = await this.app.vault.read(file);
-		const entries: {title: string, content: string}[] = [];
+		const entries: {title: string, content: string, subheadings: string[]}[] = [];
 		
 		// 根据设置选择要提取的标题级别
+		const headingLevel = this.settings.headingLevel === 'h1' ? 1 : 2;
 		const headingPattern = this.settings.headingLevel === 'h1' 
 			? '^# (.+)$' 
 			: '^## (.+)$';
+		
+		// 次级标题的级别
+		const subheadingLevel = headingLevel + 1;
+		const subheadingPattern = new RegExp(`^${"#".repeat(subheadingLevel)} (.+)$`);
 		
 		// 使用字符串分割方法而不是正则表达式的exec方法，避免lastIndex问题
 		const lines = content.split('\n');
 		let currentTitle = '';
 		let currentContent = [];
+		let currentSubheadings: string[] = [];
 		
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
 			const headingMatch = new RegExp(headingPattern).exec(line);
+			const subheadingMatch = subheadingPattern.exec(line);
 			
 			if (headingMatch) {
 				// 如果已经有标题，保存之前的条目
 				if (currentTitle) {
 					entries.push({
 						title: currentTitle,
-						content: currentContent.join('\n').trim()
+						content: currentContent.join('\n').trim(),
+						subheadings: currentSubheadings
 					});
 					currentContent = [];
+					currentSubheadings = [];
 				}
 				
 				currentTitle = headingMatch[1];
+			} else if (subheadingMatch) {
+				// 提取次级标题
+				if (currentTitle) {
+					currentSubheadings.push(subheadingMatch[1]);
+					currentContent.push(line);
+				}
 			} else if (currentTitle) {
 				currentContent.push(line);
 			}
@@ -163,11 +226,10 @@ export default class DiaryIcsPlugin extends Plugin {
 		if (currentTitle) {
 			entries.push({
 				title: currentTitle,
-				content: currentContent.join('\n').trim()
+				content: currentContent.join('\n').trim(),
+				subheadings: currentSubheadings
 			});
 		}
-			
-
 		
 		return entries;
 	}
@@ -182,20 +244,37 @@ export default class DiaryIcsPlugin extends Plugin {
 		const files = this.app.vault.getMarkdownFiles()
 			.filter(file => this.isDiaryFile(file));
 		
-			console.log (" 生成ICS文件内容: ", files.length, " 个日记文件");
+			// console.log (" 生成ICS文件内容: ", files.length, " 个日记文件");
+			new Notice (" 生成ICS文件内容: " + files.length + " 个日记文件",1000);
 		for (const file of files) {
-			// 从文件名解析日期
-			const [year, month, day] = file.basename.split('-').map(Number);
+			// 从文件名解析日期，使用moment库根据daily-notes插件的格式解析
+			// @ts-ignore - window.moment 在Obsidian中已经内置
+			const moment = window.moment;
+			const date = moment(file.basename, this.dailyNoteFormat, true);
+			const year = date.year();
+			const month = date.month() + 1; // moment月份从0开始，需要+1
+			const day = date.date();
 			const entries = await this.parseDiaryFile(file);
 			console.log (" 解析日记文件: ", file.path, " 解析条目: ", entries.length, " 条");
 			for (const entry of entries) {
+				// 构建描述内容
+				let description = '';
+				
+				// 添加次级标题
+				if (entry.subheadings && entry.subheadings.length > 0) {
+					description += "" + entry.subheadings.map(sh => `- ${sh}`).join('\n') + '\n\n';
+				}
+				
+				// 如果设置了包含内容，则添加内容
+				if (this.settings.includeContent) {
+					description += entry.content + '\n\n';
+				}
+				
 				// 创建事件
 				events.push({
 					title: entry.title,
 					url: `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}`,
-					description: this.settings.includeContent 
-						? `${entry.content}\n\n点击打开: obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}` 
-						: `点击打开: obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}`,
+					description: description,
 					start: [year, month, day],
 					duration: {days: 1}, // 默认为全天事件
 					status: 'CONFIRMED',
@@ -236,7 +315,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 			.setName('HTTP服务器端口')
 			.setDesc('本地HTTP服务器使用的端口号')
 			.addText(text => text
-				.setPlaceholder('99347')
+				.setPlaceholder('19347')
 				.setValue(this.plugin.settings.port.toString())
 				.onChange(async (value) => {
 					const port = parseInt(value);
