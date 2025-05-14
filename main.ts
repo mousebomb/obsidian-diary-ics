@@ -5,6 +5,7 @@ import { createEvents, EventAttributes } from 'ics';
 interface DiaryIcsSettings {
 	port: number;
 	headingLevel: string;
+	includeSubheadings: boolean;
 	includeContent: boolean;
 }
 
@@ -13,6 +14,7 @@ const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
 const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	port: 19347,
 	headingLevel: 'h2',
+	includeSubheadings: true,
 	includeContent: false
 }
 
@@ -57,14 +59,6 @@ export default class DiaryIcsPlugin extends Plugin {
 		// 启动HTTP服务器
 		this.startServer();
 
-		// 监听文件变化，以便更新ICS内容
-		this.registerEvent(
-			this.app.vault.on('modify', (file) => {
-				if (this.isDiaryFile(file)) {
-					console.log('日记文件已更新:', file.path);
-				}
-			})
-		);
 	}
 
 	onunload() {
@@ -261,7 +255,7 @@ export default class DiaryIcsPlugin extends Plugin {
 				let description = '';
 				
 				// 添加次级标题
-				if (entry.subheadings && entry.subheadings.length > 0) {
+				if (this.settings.includeSubheadings && entry.subheadings && entry.subheadings.length > 0) {
 					description += "" + entry.subheadings.map(sh => `- ${sh}`).join('\n') + '\n\n';
 				}
 				
@@ -336,6 +330,16 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					this.plugin.settings.headingLevel = value;
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+		.setName('包含子级标题')
+		.setDesc('在日历事件描述中包含标题下的子级标题')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.includeSubheadings)
+			.onChange(async (value) => {
+				this.plugin.settings.includeSubheadings = value;
+				await this.plugin.saveSettings();
+			}));
 
 		new Setting(containerEl)
 			.setName('包含内容')
