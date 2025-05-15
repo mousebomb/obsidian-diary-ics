@@ -21,6 +21,8 @@ interface LanguageStrings {
     settingsTitle: string;
     portSetting: string;
     portDesc: string;
+	applyButton: string;
+	portApplied: string;
     contentSettingsTitle: string;
     headingLevelSetting: string;
     headingLevelDesc: string;
@@ -74,6 +76,8 @@ const en: LanguageStrings = {
     settingsTitle: "Diary ICS Settings",
     portSetting: "HTTP Server Port",
     portDesc: "Port used by the local HTTP server",
+	applyButton: "Apply",
+	portApplied: "Port applied, server restarted",
     contentSettingsTitle: "Content Settings",
     headingLevelSetting: "Heading Level",
     headingLevelDesc: "Which level of headings to extract from diary as calendar entries",
@@ -127,6 +131,8 @@ const zh: LanguageStrings = {
     settingsTitle: "日记日历订阅设置",
     portSetting: "HTTP服务器端口",
     portDesc: "本地HTTP服务器使用的端口号",
+	applyButton: "应用",
+	portApplied: "端口已应用，服务器已重启",
     contentSettingsTitle: "内容设置",
     headingLevelSetting: "标题级别",
     headingLevelDesc: "从日记中提取哪一级标题作为日历条目",

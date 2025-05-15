@@ -107,15 +107,15 @@ export default class DiaryIcsPlugin extends Plugin {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
-	async saveSettings() {
+	async saveSettings(restartServer = false) {
 		await this.saveData(this.settings);
 
-		// 重启服务器以应用新设置
-		if (this.server) {
+		// 只有在需要时才重启服务器
+		if (restartServer && this.server) {
 			this.server.close();
 			this.server = null;
+			this.startServer();
 		}
-		this.startServer();
 	}
 
 	// 启动HTTP服务器提供ICS文件
@@ -418,8 +418,14 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					const port = parseInt(value);
 					if (!isNaN(port) && port > 0 && port < 65536) {
 						this.plugin.settings.port = port;
-						await this.plugin.saveSettings();
+						await this.plugin.saveSettings(false); // 不重启服务器
 					}
+				}))
+			.addButton(button => button
+				.setButtonText(locale.applyButton)
+				.onClick(async () => {
+					await this.plugin.saveSettings(true); // 重启服务器
+					new Notice(locale.portApplied);
 				}));
 
 		containerEl.createEl('h3', {text: locale.contentSettingsTitle});
@@ -433,7 +439,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.headingLevel)
 				.onChange(async (value) => {
 					this.plugin.settings.headingLevel = value;
-					await this.plugin.saveSettings();
+					await this.plugin.saveSettings(false);
 				}));
 
 		new Setting(containerEl)
@@ -443,7 +449,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 			.setValue(this.plugin.settings.includeSubheadings)
 			.onChange(async (value) => {
 				this.plugin.settings.includeSubheadings = value;
-				await this.plugin.saveSettings();
+				await this.plugin.saveSettings(false);
 			}));
 
 		// new Setting(containerEl)
@@ -467,7 +473,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.diaryFormat = value;
 					this.plugin.dailyNoteFormat = value; // 立即更新插件实例中的值
-					await this.plugin.saveSettings();
+					await this.plugin.saveSettings(false);
 				}));
 
 		new Setting(containerEl)
@@ -479,7 +485,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.diaryFolder = value;
 					this.plugin.dailyNoteFolder = value; // 立即更新插件实例中的值
-					await this.plugin.saveSettings();
+					await this.plugin.saveSettings(false);
 				}));
 
 		containerEl.createEl('h3', {text: locale.frontmatterSettingsTitle});
@@ -491,7 +497,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.includeFrontmatter)
 				.onChange(async (value) => {
 					this.plugin.settings.includeFrontmatter = value;
-					await this.plugin.saveSettings();
+					await this.plugin.saveSettings(false);
 				}));
 
 		new Setting(containerEl)
@@ -502,7 +508,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.frontmatterTitleTemplate)
 				.onChange(async (value) => {
 					this.plugin.settings.frontmatterTitleTemplate = value;
-					await this.plugin.saveSettings();
+					await this.plugin.saveSettings(false);
 				}));
 
 		new Setting(containerEl)
@@ -513,7 +519,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.frontmatterTemplate)
 				.onChange(async (value) => {
 					this.plugin.settings.frontmatterTemplate = value;
-					await this.plugin.saveSettings();
+					await this.plugin.saveSettings(false);
 				}));
 
 		const templateExample = containerEl.createEl('div', {text: locale.templateExampleTitle});
