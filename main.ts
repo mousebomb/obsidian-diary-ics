@@ -368,7 +368,7 @@ export default class DiaryIcsPlugin extends Plugin {
 				// 创建事件
 				events.push({
 					title: entry.title,
-					url: `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}`,
+					url: `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}${encodeURIComponent(`#${entry.title}`)}`,
 					description: description,
 					start: [year, month, day],
 					duration: {days: 1}, // 默认为全天事件
