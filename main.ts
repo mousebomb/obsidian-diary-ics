@@ -6,7 +6,7 @@ interface DiaryIcsSettings {
 	port: number;
 	headingLevel: string;
 	includeSubheadings: boolean;
-	includeContent: boolean;
+	// includeContent: boolean;
 	includeFrontmatter: boolean;
 	frontmatterTemplate: string;
 	frontmatterTitleTemplate: string;
@@ -21,7 +21,7 @@ const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	port: 19347,
 	headingLevel: 'h2',
 	includeSubheadings: true,
-	includeContent: false,
+	// includeContent: false,
 	includeFrontmatter: false,
 	frontmatterTemplate: '',
 	frontmatterTitleTemplate: '',
@@ -165,62 +165,55 @@ export default class DiaryIcsPlugin extends Plugin {
 
 
 	// 解析日记文件，提取标题和次级标题
-	async parseDiaryFile(file: TFile): Promise<{title: string, content: string, subheadings: string[]}[]> {
+	async parseDiaryFile(file: TFile): Promise<{title: string, subheadings: string[]}[]> {
+		// 使用Obsidian的缓存元数据获取标题信息
+		const fileCache = this.app.metadataCache.getFileCache(file);
+		const entries: {title: string, subheadings: string[]}[] = [];
 
-		const content = await this.app.vault.read(file);
-		const entries: {title: string, content: string, subheadings: string[]}[] = [];
+		// 如果没有缓存或没有标题信息，则返回空数组
+		if (!fileCache || !fileCache.headings) {
+			console.log("无法获取文件缓存或标题信息:", file.path);
+			return [];
+		}
 
 		// 根据设置选择要提取的标题级别
 		const headingLevel = this.settings.headingLevel === 'h1' ? 1 : 2;
-		const headingPattern = this.settings.headingLevel === 'h1'
-			? '^# (.+)$'
-			: '^## (.+)$';
-
-		// 次级标题的级别
 		const subheadingLevel = headingLevel + 1;
-		const subheadingPattern = new RegExp(`^${"#".repeat(subheadingLevel)} (.+)$`);
 
-		// 使用字符串分割方法而不是正则表达式的exec方法，避免lastIndex问题
-		const lines = content.split('\n');
-		let currentTitle = '';
-		let currentContent = [];
-		let currentSubheadings: string[] = [];
+		// 获取文件内容，用于提取标题下的内容
+		// const content = await this.app.vault.read(file);
+		// const lines = content.split('\n');
 
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i];
-			const headingMatch = new RegExp(headingPattern).exec(line);
-			const subheadingMatch = subheadingPattern.exec(line);
+		console.log (" 解析日记文件: ", file.path, " 解析标题: ", fileCache.headings);
+		// 筛选出指定级别的标题
+		const mainHeadings = fileCache.headings?.filter(h => h.level === headingLevel) || [];
 
-			if (headingMatch) {
-				// 如果已经有标题，保存之前的条目
-				if (currentTitle) {
-					entries.push({
-						title: currentTitle,
-						content: currentContent.join('\n').trim(),
-						subheadings: currentSubheadings
-					});
-					currentContent = [];
-					currentSubheadings = [];
-				}
+		// 处理每个主标题
+		for (let i = 0; i < mainHeadings.length; i++) {
+			const heading = mainHeadings[i];
+			const nextHeading = mainHeadings[i + 1];
+			const title = heading.heading;
 
-				currentTitle = headingMatch[1];
-			} else if (subheadingMatch) {
-				// 提取次级标题
-				if (currentTitle) {
-					currentSubheadings.push(subheadingMatch[1]);
-					currentContent.push(line);
-				}
-			} else if (currentTitle) {
-				currentContent.push(line);
-			}
-		}
+			// 计算当前标题的内容范围
+			const startLine = heading.position.start.line;
 
-		// 添加最后一个条目
-		if (currentTitle) {
+			// 查找子标题
+			const subheadings: string[] = [];
+			const subheadingsData = fileCache.headings?.filter(h =>
+				h.level === subheadingLevel &&
+				h.position.start.line > startLine &&
+				(nextHeading ? h.position.start.line < nextHeading.position.start.line : true)
+			) || [];
+
+			// 提取子标题文本
+			subheadingsData.forEach(sh => {
+				subheadings.push(sh.heading);
+			});
+
+			// 添加条目
 			entries.push({
-				title: currentTitle,
-				content: currentContent.join('\n').trim(),
-				subheadings: currentSubheadings
+				title,
+				subheadings
 			});
 		}
 
@@ -341,9 +334,9 @@ export default class DiaryIcsPlugin extends Plugin {
 				}
 
 				// 如果设置了包含内容，则添加内容
-				if (this.settings.includeContent) {
-					description += entry.content + '\n\n';
-				}
+				// if (this.settings.includeContent) {
+				// 	description += entry.content + '\n\n';
+				// }
 
 				// 创建事件
 				events.push({
@@ -424,15 +417,15 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				await this.plugin.saveSettings();
 			}));
 
-		new Setting(containerEl)
-			.setName('包含内容')
-			.setDesc('在日历事件描述中包含标题下的内容')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.includeContent)
-				.onChange(async (value) => {
-					this.plugin.settings.includeContent = value;
-					await this.plugin.saveSettings();
-				}));
+		// new Setting(containerEl)
+		// 	.setName('包含内容')
+		// 	.setDesc('在日历事件描述中包含标题下的内容')
+		// 	.addToggle(toggle => toggle
+		// 		.setValue(this.plugin.settings.includeContent)
+		// 		.onChange(async (value) => {
+		// 			this.plugin.settings.includeContent = value;
+		// 			await this.plugin.saveSettings();
+		// 		}));
 
 		containerEl.createEl('h3', {text: '日记设置'});
 
