@@ -1,6 +1,7 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import * as http from 'http';
 import { createEvents, EventAttributes } from 'ics';
+import { networkInterfaces } from 'os';
 
 interface DiaryIcsSettings {
 	port: number;
@@ -33,7 +34,20 @@ export default class DiaryIcsPlugin extends Plugin {
 	settings: DiaryIcsSettings;
 	server: http.Server | null = null;
 	dailyNoteFormat: string = DEFAULT_DAILY_NOTE_FORMAT;
-	dailyNoteFolder: string = "";
+	dailyNoteFolder = "";
+
+	// 获取本地IP地址
+	getLocalIP(): string {
+		const interfaces = networkInterfaces();
+		for (const name of Object.keys(interfaces)) {
+			for (const iface of interfaces[name]!) {
+				if (iface.family === 'IPv4' && !iface.internal) {
+					return iface.address;
+				}
+			}
+		}
+		return '127.0.0.1';
+	}
 
 	async onload() {
 		await this.loadSettings();
@@ -42,22 +56,25 @@ export default class DiaryIcsPlugin extends Plugin {
 		this.dailyNoteFormat = this.settings.diaryFormat;
 		this.dailyNoteFolder = this.settings.diaryFolder;
 
+		const localIP = this.getLocalIP();
+
 		// 添加图标到左侧边栏
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const ribbonIconEl = this.addRibbonIcon('calendar-with-checkmark', 'Diary ICS', (evt: MouseEvent) => {
 			// 点击图标时显示ICS订阅链接
-			new Notice(`ICS订阅链接: http://127.0.0.1:${this.settings.port}/feed.ics`);
+			new Notice(`ICS订阅链接: http://${localIP}:${this.settings.port}/feed.ics`);
 		});
 
 		// 添加状态栏项目
 		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText(`ICS: http://127.0.0.1:${this.settings.port}/feed.ics`);
+		statusBarItemEl.setText(`ICS: http://${localIP}:${this.settings.port}/feed.ics`);
 
 		// 添加命令：复制ICS订阅链接
 		this.addCommand({
 			id: 'copy-ics-url',
 			name: '复制ICS订阅链接',
 			callback: () => {
-				const url = `http://127.0.0.1:${this.settings.port}/feed.ics`;
+				const url = `http://${localIP}:${this.settings.port}/feed.ics`;
 				navigator.clipboard.writeText(url);
 				new Notice('ICS订阅链接已复制到剪贴板');
 			}
@@ -98,6 +115,7 @@ export default class DiaryIcsPlugin extends Plugin {
 	// 启动HTTP服务器提供ICS文件
 	startServer() {
 		const port = this.settings.port;
+		const localIP = this.getLocalIP();
 
 		this.server = http.createServer(async (req, res) => {
 			if (req.url === '/feed.ics') {
@@ -122,8 +140,8 @@ export default class DiaryIcsPlugin extends Plugin {
 		});
 
 		this.server.listen(port, '0.0.0.0', () => {
-			console.log(`ICS HTTP服务器已启动: http://127.0.0.1:${port}/feed.ics`);
-			new Notice(`ICS服务器已启动: http://127.0.0.1:${port}/feed.ics`);
+			console.log(`ICS HTTP服务器已启动: http://${localIP}:${port}/feed.ics`);
+			new Notice(`ICS服务器已启动: http://${localIP}:${port}/feed.ics`);
 		});
 
 		this.server.on('error', (error) => {
@@ -446,7 +464,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('日记文件夹')
-			.setDesc('日记文件所在的文件夹路径，留空表示根目录')
+			.setDesc('日记文件所在的文件夹路径，留空表示根目���')
 			.addText(text => text
 				.setPlaceholder('')
 				.setValue(this.plugin.settings.diaryFolder)
@@ -501,8 +519,9 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		templateExample.style.marginBottom = '20px';
 
 		// 显示当前ICS订阅链接
+		const localIP = this.plugin.getLocalIP();
 		containerEl.createEl('h3', {text: 'ICS订阅链接'});
-		const linkEl = containerEl.createEl('div', {text: `http://127.0.0.1:${this.plugin.settings.port}/feed.ics`});
+		const linkEl = containerEl.createEl('div', {text: `http://${localIP}:${this.plugin.settings.port}/feed.ics`});
 		linkEl.style.padding = '10px';
 		linkEl.style.backgroundColor = '#f5f5f5';
 		linkEl.style.borderRadius = '5px';
@@ -512,7 +531,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		const copyButton = containerEl.createEl('button', {text: '复制链接'});
 		copyButton.style.marginBottom = '20px';
 		copyButton.addEventListener('click', () => {
-			const url = `http://127.0.0.1:${this.plugin.settings.port}/feed.ics`;
+			const url = `http://${localIP}:${this.plugin.settings.port}/feed.ics`;
 			navigator.clipboard.writeText(url);
 			new Notice('ICS订阅链接已复制到剪贴板');
 		});
