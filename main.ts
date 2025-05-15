@@ -10,6 +10,9 @@ interface DiaryIcsSettings {
 	includeFrontmatter: boolean;
 	frontmatterTemplate: string;
 	frontmatterTitleTemplate: string;
+	// 日记设置
+	diaryFormat: string;
+	diaryFolder: string;
 }
 
 const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
@@ -21,7 +24,9 @@ const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	includeContent: false,
 	includeFrontmatter: false,
 	frontmatterTemplate: '',
-	frontmatterTitleTemplate: ''
+	frontmatterTitleTemplate: '',
+	diaryFormat: DEFAULT_DAILY_NOTE_FORMAT,
+	diaryFolder: ''
 }
 
 export default class DiaryIcsPlugin extends Plugin {
@@ -33,10 +38,9 @@ export default class DiaryIcsPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		// 读取daily-notes插件设置
-		const dailyNoteSettings = this.getDailyNoteSettings();
-		this.dailyNoteFormat = dailyNoteSettings.format;
-		this.dailyNoteFolder = dailyNoteSettings.folder;
+		// 使用插件自身的设置
+		this.dailyNoteFormat = this.settings.diaryFormat;
+		this.dailyNoteFolder = this.settings.diaryFolder;
 
 		// 添加图标到左侧边栏
 		const ribbonIconEl = this.addRibbonIcon('calendar-with-checkmark', 'Diary ICS', (evt: MouseEvent) => {
@@ -128,28 +132,16 @@ export default class DiaryIcsPlugin extends Plugin {
 		});
 	}
 
-	// 读取daily-notes插件设置
+	// 获取日记设置（从插件自身的设置中获取）
 	getDailyNoteSettings() {
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { internalPlugins } = (window as any )["app"];
-			const { folder, format, template } = internalPlugins.getPluginById("daily-notes")?.instance?.options || {};
-			return {
-				format: format || DEFAULT_DAILY_NOTE_FORMAT,
-				folder: folder?.trim() || "",
-				template: template?.trim() || "",
-			};
-		} catch (err) {
-			console.info("无法读取daily-notes插件设置，使用默认设置", err);
-			return {
-				format: DEFAULT_DAILY_NOTE_FORMAT,
-				folder: "",
-				template: "",
-			};
-		}
+		return {
+			format: this.settings.diaryFormat || DEFAULT_DAILY_NOTE_FORMAT,
+			folder: this.settings.diaryFolder?.trim() || "",
+			template: "", // 不再使用模板设置
+		};
 	}
 
-	// 判断文件是否为日记文件（基于daily-notes插件设置或默认格式）
+	// 判断文件是否为日记文件（基于插件设置的格式）
 	isDiaryFile(file: TFile): boolean {
 		// 检查文件扩展名
 		if (file.extension !== 'md') return false;
@@ -166,7 +158,7 @@ export default class DiaryIcsPlugin extends Plugin {
 			return false;
 		}
 
-		// 尝试使用daily-notes插件的格式解析文件名
+		// 尝试使用配置的日记格式解析文件名
 		const date = moment(file.basename, this.dailyNoteFormat, true);
 		return date.isValid();
 	}
@@ -248,7 +240,7 @@ export default class DiaryIcsPlugin extends Plugin {
 			// console.log (" 生成ICS文件内容: ", files.length, " 个日记文件");
 			new Notice (" 生成ICS文件内容: " + files.length + " 个日记文件",1000);
 		for (const file of files) {
-			// 从文件名解析日期，使用moment库根据daily-notes插件的格式解析
+			// 从文件名解析日期，使用moment库根据配置的日记格式解析
 			// @ts-ignore - window.moment 在Obsidian中已经内置
 			const moment = window.moment;
 			const date = moment(file.basename, this.dailyNoteFormat, true);
@@ -439,6 +431,32 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.includeContent)
 				.onChange(async (value) => {
 					this.plugin.settings.includeContent = value;
+					await this.plugin.saveSettings();
+				}));
+
+		containerEl.createEl('h3', {text: '日记设置'});
+
+		new Setting(containerEl)
+			.setName('日记命名格式')
+			.setDesc('日记文件的命名格式，例如YYYY-MM-DD')
+			.addText(text => text
+				.setPlaceholder('YYYY-MM-DD')
+				.setValue(this.plugin.settings.diaryFormat)
+				.onChange(async (value) => {
+					this.plugin.settings.diaryFormat = value;
+					this.plugin.dailyNoteFormat = value; // 立即更新插件实例中的值
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('日记文件夹')
+			.setDesc('日记文件所在的文件夹路径，留空表示根目录')
+			.addText(text => text
+				.setPlaceholder('')
+				.setValue(this.plugin.settings.diaryFolder)
+				.onChange(async (value) => {
+					this.plugin.settings.diaryFolder = value;
+					this.plugin.dailyNoteFolder = value; // 立即更新插件实例中的值
 					await this.plugin.saveSettings();
 				}));
 
