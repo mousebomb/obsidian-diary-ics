@@ -32,7 +32,7 @@ export default class DiaryIcsPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		
+
 		// 读取daily-notes插件设置
 		const dailyNoteSettings = this.getDailyNoteSettings();
 		this.dailyNoteFormat = dailyNoteSettings.format;
@@ -43,7 +43,7 @@ export default class DiaryIcsPlugin extends Plugin {
 			// 点击图标时显示ICS订阅链接
 			new Notice(`ICS订阅链接: http://127.0.0.1:${this.settings.port}/feed.ics`);
 		});
-		
+
 		// 添加状态栏项目
 		const statusBarItemEl = this.addStatusBarItem();
 		statusBarItemEl.setText(`ICS: http://127.0.0.1:${this.settings.port}/feed.ics`);
@@ -82,7 +82,7 @@ export default class DiaryIcsPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-		
+
 		// 重启服务器以应用新设置
 		if (this.server) {
 			this.server.close();
@@ -94,12 +94,12 @@ export default class DiaryIcsPlugin extends Plugin {
 	// 启动HTTP服务器提供ICS文件
 	startServer() {
 		const port = this.settings.port;
-		
+
 		this.server = http.createServer(async (req, res) => {
 			if (req.url === '/feed.ics') {
 				try {
 					const icsContent = await this.generateIcsContent();
-					
+
 					res.writeHead(200, {
 						'Content-Type': 'text/calendar',
 						'Content-Disposition': 'attachment; filename="obsidian-diary.ics"'
@@ -153,11 +153,11 @@ export default class DiaryIcsPlugin extends Plugin {
 	isDiaryFile(file: TFile): boolean {
 		// 检查文件扩展名
 		if (file.extension !== 'md') return false;
-		
+
 		// 检查文件是否在日记文件夹中
 		const matchFolder = this.dailyNoteFolder ==="/" ? "" : this.dailyNoteFolder;
 		if (this.dailyNoteFolder && !file.path.startsWith(matchFolder)) return false;
-		
+
 		// 使用moment库验证文件名是否符合日期格式
 		// @ts-ignore - window.moment 在Obsidian中已经内置
 		const moment = window.moment;
@@ -170,35 +170,35 @@ export default class DiaryIcsPlugin extends Plugin {
 		const date = moment(file.basename, this.dailyNoteFormat, true);
 		return date.isValid();
 	}
-	
+
 
 	// 解析日记文件，提取标题和次级标题
 	async parseDiaryFile(file: TFile): Promise<{title: string, content: string, subheadings: string[]}[]> {
-		
+
 		const content = await this.app.vault.read(file);
 		const entries: {title: string, content: string, subheadings: string[]}[] = [];
-		
+
 		// 根据设置选择要提取的标题级别
 		const headingLevel = this.settings.headingLevel === 'h1' ? 1 : 2;
-		const headingPattern = this.settings.headingLevel === 'h1' 
-			? '^# (.+)$' 
+		const headingPattern = this.settings.headingLevel === 'h1'
+			? '^# (.+)$'
 			: '^## (.+)$';
-		
+
 		// 次级标题的级别
 		const subheadingLevel = headingLevel + 1;
 		const subheadingPattern = new RegExp(`^${"#".repeat(subheadingLevel)} (.+)$`);
-		
+
 		// 使用字符串分割方法而不是正则表达式的exec方法，避免lastIndex问题
 		const lines = content.split('\n');
 		let currentTitle = '';
 		let currentContent = [];
 		let currentSubheadings: string[] = [];
-		
+
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
 			const headingMatch = new RegExp(headingPattern).exec(line);
 			const subheadingMatch = subheadingPattern.exec(line);
-			
+
 			if (headingMatch) {
 				// 如果已经有标题，保存之前的条目
 				if (currentTitle) {
@@ -210,7 +210,7 @@ export default class DiaryIcsPlugin extends Plugin {
 					currentContent = [];
 					currentSubheadings = [];
 				}
-				
+
 				currentTitle = headingMatch[1];
 			} else if (subheadingMatch) {
 				// 提取次级标题
@@ -222,7 +222,7 @@ export default class DiaryIcsPlugin extends Plugin {
 				currentContent.push(line);
 			}
 		}
-		
+
 		// 添加最后一个条目
 		if (currentTitle) {
 			entries.push({
@@ -231,7 +231,7 @@ export default class DiaryIcsPlugin extends Plugin {
 				subheadings: currentSubheadings
 			});
 		}
-		
+
 		return entries;
 	}
 
@@ -240,11 +240,11 @@ export default class DiaryIcsPlugin extends Plugin {
 		const events: EventAttributes[] = [];
 		const vaultName = this.app.vault.getName();
 		console.log (" 生成ICS文件内容: ", vaultName);
-		
+
 		// 获取所有日记文件
 		const files = this.app.vault.getMarkdownFiles()
 			.filter(file => this.isDiaryFile(file));
-		
+
 			// console.log (" 生成ICS文件内容: ", files.length, " 个日记文件");
 			new Notice (" 生成ICS文件内容: " + files.length + " 个日记文件",1000);
 		for (const file of files) {
@@ -265,14 +265,14 @@ export default class DiaryIcsPlugin extends Plugin {
 					// 创建frontmatter事件描述
 					let frontmatterDescription = '';
 					const frontmatter = fileCache.frontmatter;
-					
+
 					// 使用模板格式化frontmatter内容
 					if (this.settings.frontmatterTemplate) {
 						// 解析模板中的变量
 						const template = this.settings.frontmatterTemplate;
 						// 由模板生成的结果
 						let lines = template;
-						
+
 						// 检查模板是否包含特定字段的格式
 						if (template.includes('{{')) {
 							// 模板包含变量，按照模板格式化
@@ -286,7 +286,7 @@ export default class DiaryIcsPlugin extends Plugin {
 							// 模板不包含变量，直接使用模板
 							lines = template;
 						}
-						
+
 						frontmatterDescription += lines;
 					} else {
 						// 没有模板，使用默认格式（每行一个字段）
@@ -296,7 +296,7 @@ export default class DiaryIcsPlugin extends Plugin {
 							frontmatterDescription += `${key}: ${frontmatter[key]}\n`;
 						}
 					}
-					
+
 					// 生成自定义标题
 					let eventTitle = `${file.basename}[frontmatter]`;
 					if (this.settings.frontmatterTitleTemplate) {
@@ -304,12 +304,12 @@ export default class DiaryIcsPlugin extends Plugin {
 						if (titleTemplate.includes('{{')) {
 							// 模板包含变量，按照模板格式化
 							let customTitle = titleTemplate;
-							
+
 							// 先处理特殊变量 {{filename}}
 							if (customTitle.includes('{{filename}}')) {
 								customTitle = customTitle.replace(/\{\{filename\}\}/g, file.basename);
 							}
-							
+
 							// 处理frontmatter中的变量
 							for (const key in frontmatter) {
 								if (key === 'position') continue; // 跳过position字段
@@ -323,7 +323,7 @@ export default class DiaryIcsPlugin extends Plugin {
 							eventTitle = titleTemplate;
 						}
 					}
-					
+
 					// 创建frontmatter事件
 					if (frontmatterDescription) {
 						events.push({
@@ -338,21 +338,21 @@ export default class DiaryIcsPlugin extends Plugin {
 					}
 				}
 			}
-			
+
 			for (const entry of entries) {
 				// 构建描述内容
 				let description = '';
-				
+
 				// 添加次级标题
 				if (this.settings.includeSubheadings && entry.subheadings && entry.subheadings.length > 0) {
 					description += "" + entry.subheadings.map(sh => `- ${sh}`).join('\n') + '\n\n';
 				}
-				
+
 				// 如果设置了包含内容，则添加内容
 				if (this.settings.includeContent) {
 					description += entry.content + '\n\n';
 				}
-				
+
 				// 创建事件
 				events.push({
 					title: entry.title,
@@ -365,7 +365,7 @@ export default class DiaryIcsPlugin extends Plugin {
 				});
 			}
 		}
-		
+
 		// 使用ics库生成ICS内容
 		return new Promise((resolve, reject) => {
 			createEvents(events, (error, value) => {
@@ -441,9 +441,9 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeContent = value;
 					await this.plugin.saveSettings();
 				}));
-				
+
 		containerEl.createEl('h3', {text: 'Frontmatter设置'});
-		
+
 		new Setting(containerEl)
 			.setName('包含Frontmatter')
 			.setDesc('将日记文件的Frontmatter内容作为单独的日历事件')
@@ -453,12 +453,12 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeFrontmatter = value;
 					await this.plugin.saveSettings();
 				}));
-				
+
 		new Setting(containerEl)
 			.setName('Frontmatter标题模板')
 			.setDesc('自定义Frontmatter日程的标题格式，可使用{{字段名}}引用特定字段，也可使用{{filename}}引用当前文件名')
 			.addText(text => text
-				.setPlaceholder('今日汇总')
+				.setPlaceholder('{{filename}}[frontmatter]')
 				.setValue(this.plugin.settings.frontmatterTitleTemplate)
 				.onChange(async (value) => {
 					this.plugin.settings.frontmatterTitleTemplate = value;
@@ -475,7 +475,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					this.plugin.settings.frontmatterTemplate = value;
 					await this.plugin.saveSettings();
 				}));
-				
+
 		const templateExample = containerEl.createEl('div', {text: '模板示例：'});
 		templateExample.style.padding = '5px';
 		templateExample.style.fontSize = '0.8em';
@@ -493,7 +493,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		linkEl.style.backgroundColor = '#f5f5f5';
 		linkEl.style.borderRadius = '5px';
 		linkEl.style.marginBottom = '20px';
-		
+
 		// 添加复制按钮
 		const copyButton = containerEl.createEl('button', {text: '复制链接'});
 		copyButton.style.marginBottom = '20px';
@@ -502,7 +502,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 			navigator.clipboard.writeText(url);
 			new Notice('ICS订阅链接已复制到剪贴板');
 		});
-		
+
 		// 添加使用说明
 		containerEl.createEl('h3', {text: '使用说明'});
 		containerEl.createEl('p', {text: '1. 复制上面的ICS订阅链接'});
