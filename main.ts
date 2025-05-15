@@ -1,7 +1,8 @@
-import {addIcon, App, Notice, Plugin, PluginSettingTab, Setting, TFile} from 'obsidian';
+import {addIcon, App, getLanguage, Notice, Plugin, PluginSettingTab, Setting, TFile} from 'obsidian';
 import * as http from 'http';
 import { createEvents, EventAttributes } from 'ics';
 import { networkInterfaces } from 'os';
+import { getLocalizedStrings, formatString } from './lang';
 
 interface DiaryIcsSettings {
 	port: number;
@@ -35,6 +36,7 @@ export default class DiaryIcsPlugin extends Plugin {
 	server: http.Server | null = null;
 	dailyNoteFormat: string = DEFAULT_DAILY_NOTE_FORMAT;
 	dailyNoteFolder = "";
+	locale: ReturnType<typeof getLocalizedStrings>;
 
 	// 获取本地IP地址
 	getLocalIP(): string {
@@ -52,6 +54,9 @@ export default class DiaryIcsPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		// 加载语言配置
+		this.locale = getLocalizedStrings(getLanguage());
+
 		// 使用插件自身的设置
 		this.dailyNoteFormat = this.settings.diaryFormat;
 		this.dailyNoteFolder = this.settings.diaryFolder;
@@ -61,9 +66,9 @@ export default class DiaryIcsPlugin extends Plugin {
 		// 添加图标到左侧边栏
 		addIcon("diary-ics",`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-sync-icon lucide-calendar-sync"><path d="M11 10v4h4"/><path d="m11 14 1.535-1.605a5 5 0 0 1 8 1.5"/><path d="M16 2v4"/><path d="m21 18-1.535 1.605a5 5 0 0 1-8-1.5"/><path d="M21 22v-4h-4"/><path d="M21 8.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4.3"/><path d="M3 10h4"/><path d="M8 2v4"/></svg>`);
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const ribbonIconEl = this.addRibbonIcon('diary-ics', 'Diary ICS', (evt: MouseEvent) => {
+		const ribbonIconEl = this.addRibbonIcon('diary-ics', this.locale.pluginName, (evt: MouseEvent) => {
 			// 点击图标时显示ICS订阅链接
-			new Notice(`ICS订阅链接: http://${localIP}:${this.settings.port}/feed.ics`);
+			new Notice(`${this.locale.pluginName}: http://${localIP}:${this.settings.port}/feed.ics`);
 		});
 
 		// 添加状态栏项目
@@ -73,11 +78,11 @@ export default class DiaryIcsPlugin extends Plugin {
 		// 添加命令：复制ICS订阅链接
 		this.addCommand({
 			id: 'copy-ics-url',
-			name: '复制ICS订阅链接',
+			name: this.locale.copyIcsUrlCommand,
 			callback: () => {
 				const url = `http://${localIP}:${this.settings.port}/feed.ics`;
 				navigator.clipboard.writeText(url);
-				new Notice('ICS订阅链接已复制到剪贴板');
+				new Notice(this.locale.copySuccess);
 			}
 		});
 
@@ -94,7 +99,7 @@ export default class DiaryIcsPlugin extends Plugin {
 		if (this.server) {
 			this.server.close();
 			this.server = null;
-			console.log('ICS HTTP服务器已关闭');
+			console.log('ICS HTTP server closed');
 		}
 	}
 
@@ -128,26 +133,26 @@ export default class DiaryIcsPlugin extends Plugin {
 						'Content-Disposition': 'attachment; filename="obsidian-diary.ics"'
 					});
 					res.end(icsContent);
-					console.log('已提供ICS文件');
+					console.log(this.locale.fileProvided);
 				} catch (error) {
-					console.error('生成ICS文件时出错:', error);
+					console.error(this.locale.fileGenerationError + ':', error);
 					res.writeHead(500);
-					res.end('生成ICS文件时出错');
+					res.end(this.locale.fileGenerationError);
 				}
 			} else {
 				res.writeHead(404);
-				res.end('未找到');
+				res.end(this.locale.notFound);
 			}
 		});
 
 		this.server.listen(port, '0.0.0.0', () => {
-			console.log(`ICS HTTP服务器已启动: http://${localIP}:${port}/feed.ics`);
-			new Notice(`ICS服务器已启动: http://${localIP}:${port}/feed.ics`);
+			console.log(formatString(this.locale.serverStarted, localIP, port));
+			new Notice(formatString(this.locale.serverStarted, localIP, port));
 		});
 
 		this.server.on('error', (error) => {
-			console.error('HTTP服务器错误:', error);
-			new Notice(`HTTP服务器错误: ${error.message}`);
+			console.error(this.locale.serverError.replace('{0}', ''), error);
+			new Notice(formatString(this.locale.serverError, error.message));
 		});
 	}
 
@@ -173,7 +178,7 @@ export default class DiaryIcsPlugin extends Plugin {
 		// @ts-ignore - window.moment 在Obsidian中已经内置
 		const moment = window.moment;
 		if (!moment) {
-			console.error("无法获取moment库");
+			console.error(this.locale.cannotGetMoment);
 			return false;
 		}
 
@@ -191,7 +196,7 @@ export default class DiaryIcsPlugin extends Plugin {
 
 		// 如果没有缓存或没有标题信息，则返回空数组
 		if (!fileCache || !fileCache.headings) {
-			console.log("无法获取文件缓存或标题信息:", file.path);
+			console.log(formatString(this.locale.cannotGetFileCache, file.path));
 			return [];
 		}
 
@@ -246,14 +251,14 @@ export default class DiaryIcsPlugin extends Plugin {
 	async generateIcsContent(): Promise<string> {
 		const events: EventAttributes[] = [];
 		const vaultName = this.app.vault.getName();
-		console.log (" 生成ICS文件内容: ", vaultName);
+		console.log(formatString(this.locale.generatingIcsContent, vaultName));
 
 		// 获取所有日记文件
 		const files = this.app.vault.getMarkdownFiles()
 			.filter(file => this.isDiaryFile(file));
 
 			// console.log (" 生成ICS文件内容: ", files.length, " 个日记文件");
-			new Notice (" 生成ICS文件内容: " + files.length + " 个日记文件",1000);
+			new Notice(formatString(this.locale.generatingIcsFiles, files.length), 1000);
 		for (const file of files) {
 			// 从文件名解析日期，使用moment库根据配置的日记格式解析
 			// @ts-ignore - window.moment 在Obsidian中已经内置
@@ -396,14 +401,16 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const {containerEl} = this;
+		const locale = this.plugin.locale;
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Diary ICS 设置'});
+
+		containerEl.createEl('h2', {text: locale.settingsTitle});
 
 		new Setting(containerEl)
-			.setName('HTTP服务器端口')
-			.setDesc('本地HTTP服务器使用的端口号')
+			.setName(locale.portSetting)
+			.setDesc(locale.portDesc)
 			.addText(text => text
 				.setPlaceholder('19347')
 				.setValue(this.plugin.settings.port.toString())
@@ -415,14 +422,14 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					}
 				}));
 
-		containerEl.createEl('h3', {text: '内容设置'});
+		containerEl.createEl('h3', {text: locale.contentSettingsTitle});
 
 		new Setting(containerEl)
-			.setName('标题级别')
-			.setDesc('从日记中提取哪一级标题作为日历条目')
+			.setName(locale.headingLevelSetting)
+			.setDesc(locale.headingLevelDesc)
 			.addDropdown(dropdown => dropdown
-				.addOption('h1', '一级标题 (#)')
-				.addOption('h2', '二级标题 (##)')
+				.addOption('h1', locale.h1Option)
+				.addOption('h2', locale.h2Option)
 				.setValue(this.plugin.settings.headingLevel)
 				.onChange(async (value) => {
 					this.plugin.settings.headingLevel = value;
@@ -430,8 +437,8 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-		.setName('包含子级标题')
-		.setDesc('在日历事件描述中包含标题下的子级标题')
+		.setName(locale.includeSubheadingsSetting)
+		.setDesc(locale.includeSubheadingsDesc)
 		.addToggle(toggle => toggle
 			.setValue(this.plugin.settings.includeSubheadings)
 			.onChange(async (value) => {
@@ -449,11 +456,11 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		// 			await this.plugin.saveSettings();
 		// 		}));
 
-		containerEl.createEl('h3', {text: '日记设置'});
+		containerEl.createEl('h3', {text: locale.diarySettingsTitle});
 
 		new Setting(containerEl)
-			.setName('日记命名格式')
-			.setDesc('日记文件的命名格式，例如YYYY-MM-DD')
+			.setName(locale.diaryFormatSetting)
+			.setDesc(locale.diaryFormatDesc)
 			.addText(text => text
 				.setPlaceholder('YYYY-MM-DD')
 				.setValue(this.plugin.settings.diaryFormat)
@@ -464,8 +471,8 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('日记文件夹')
-			.setDesc('日记文件所在的文件夹路径，留空表示根目录')
+			.setName(locale.diaryFolderSetting)
+			.setDesc(locale.diaryFolderDesc)
 			.addText(text => text
 				.setPlaceholder('')
 				.setValue(this.plugin.settings.diaryFolder)
@@ -475,11 +482,11 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		containerEl.createEl('h3', {text: 'Frontmatter设置'});
+		containerEl.createEl('h3', {text: locale.frontmatterSettingsTitle});
 
 		new Setting(containerEl)
-			.setName('包含Frontmatter')
-			.setDesc('将日记文件的Frontmatter内容作为单独的日历事件')
+			.setName(locale.includeFrontmatterSetting)
+			.setDesc(locale.includeFrontmatterDesc)
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.includeFrontmatter)
 				.onChange(async (value) => {
@@ -488,8 +495,8 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Frontmatter标题模板')
-			.setDesc('自定义Frontmatter日程的标题格式，可使用{{字段名}}引用特定字段，也可使用{{filename}}引用当前文件名')
+			.setName(locale.frontmatterTitleSetting)
+			.setDesc(locale.frontmatterTitleDesc)
 			.addText(text => text
 				.setPlaceholder('{{filename}}[frontmatter]')
 				.setValue(this.plugin.settings.frontmatterTitleTemplate)
@@ -499,8 +506,8 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Frontmatter内容模板')
-			.setDesc('自定义Frontmatter内容的显示格式，可直接使用{{字段名}}引用特定字段')
+			.setName(locale.frontmatterTemplateSetting)
+			.setDesc(locale.frontmatterTemplateDesc)
 			.addText(text => text
 				.setPlaceholder('')
 				.setValue(this.plugin.settings.frontmatterTemplate)
@@ -509,19 +516,19 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		const templateExample = containerEl.createEl('div', {text: '模板示例：'});
+		const templateExample = containerEl.createEl('div', {text: locale.templateExampleTitle});
 		templateExample.style.padding = '5px';
 		templateExample.style.fontSize = '0.8em';
 		templateExample.style.color = '#888';
-		templateExample.createEl('div', {text: '1. 使用 "天气:{{weather}} 心情:{{mood}}" 将替换特定字段'});
-		templateExample.createEl('div', {text: '2. 使用 "{{filename}}的日记" 将替换为当前文件名（不含扩展名）'});
-		templateExample.createEl('div', {text: '3. 留空则使用默认格式（标题为文件名+[frontmatter]，内容为每行一个字段）'});
-		templateExample.createEl('div', {text: '4. 值为null的属性将被自动跳过'});
+		templateExample.createEl('div', {text: locale.templateExample1});
+		templateExample.createEl('div', {text: locale.templateExample2});
+		templateExample.createEl('div', {text: locale.templateExample3});
+		templateExample.createEl('div', {text: locale.templateExample4});
 		templateExample.style.marginBottom = '20px';
 
 		// 显示当前ICS订阅链接
 		const localIP = this.plugin.getLocalIP();
-		containerEl.createEl('h3', {text: 'ICS订阅链接'});
+		containerEl.createEl('h3', {text: locale.icsLinkTitle});
 		const linkEl = containerEl.createEl('div', {text: `http://${localIP}:${this.plugin.settings.port}/feed.ics`});
 		linkEl.style.padding = '10px';
 		linkEl.style.backgroundColor = '#f5f5f5';
@@ -529,18 +536,18 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		linkEl.style.marginBottom = '20px';
 
 		// 添加复制按钮
-		const copyButton = containerEl.createEl('button', {text: '复制链接'});
+		const copyButton = containerEl.createEl('button', {text: locale.copyLinkButton});
 		copyButton.style.marginBottom = '20px';
 		copyButton.addEventListener('click', () => {
 			const url = `http://${localIP}:${this.plugin.settings.port}/feed.ics`;
 			navigator.clipboard.writeText(url);
-			new Notice('ICS订阅链接已复制到剪贴板');
+			new Notice(locale.copySuccess);
 		});
 
 		// 添加使用说明
-		containerEl.createEl('h3', {text: '使用说明'});
-		containerEl.createEl('p', {text: '1. 复制上面的ICS订阅链接'});
-		containerEl.createEl('p', {text: '2. 在系统日历应用中添加该订阅链接'});
-		containerEl.createEl('p', {text: '3. 确保Obsidian在运行状态，以便HTTP服务器能够提供ICS文件'});
+		containerEl.createEl('h3', {text: locale.instructionsTitle});
+		containerEl.createEl('p', {text: locale.instruction1});
+		containerEl.createEl('p', {text: locale.instruction2});
+		containerEl.createEl('p', {text: locale.instruction3});
 	}
 }
