@@ -9,6 +9,7 @@ interface DiaryIcsSettings {
 	includeContent: boolean;
 	includeFrontmatter: boolean;
 	frontmatterTemplate: string;
+	frontmatterTitleTemplate: string;
 }
 
 const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
@@ -19,7 +20,8 @@ const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	includeSubheadings: true,
 	includeContent: false,
 	includeFrontmatter: false,
-	frontmatterTemplate: ''
+	frontmatterTemplate: '',
+	frontmatterTitleTemplate: ''
 }
 
 export default class DiaryIcsPlugin extends Plugin {
@@ -276,6 +278,7 @@ export default class DiaryIcsPlugin extends Plugin {
 							// 模板包含变量，按照模板格式化
 							for (const key in frontmatter) {
 								if (key === 'position') continue; // 跳过position字段
+								if (frontmatter[key] === null || frontmatter[key] === undefined) continue; // 跳过值为null或undefined的属性
 								// 替换特定字段，如{{fieldName}}
 								lines = lines.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(frontmatter[key]));
 							}
@@ -289,14 +292,42 @@ export default class DiaryIcsPlugin extends Plugin {
 						// 没有模板，使用默认格式（每行一个字段）
 						for (const key in frontmatter) {
 							if (key === 'position') continue; // 跳过position字段
+							if (frontmatter[key] === null || frontmatter[key] === undefined) continue; // 跳过值为null或undefined的属性
 							frontmatterDescription += `${key}: ${frontmatter[key]}\n`;
+						}
+					}
+					
+					// 生成自定义标题
+					let eventTitle = `${file.basename}[frontmatter]`;
+					if (this.settings.frontmatterTitleTemplate) {
+						const titleTemplate = this.settings.frontmatterTitleTemplate;
+						if (titleTemplate.includes('{{')) {
+							// 模板包含变量，按照模板格式化
+							let customTitle = titleTemplate;
+							
+							// 先处理特殊变量 {{filename}}
+							if (customTitle.includes('{{filename}}')) {
+								customTitle = customTitle.replace(/\{\{filename\}\}/g, file.basename);
+							}
+							
+							// 处理frontmatter中的变量
+							for (const key in frontmatter) {
+								if (key === 'position') continue; // 跳过position字段
+								if (frontmatter[key] === null || frontmatter[key] === undefined) continue; // 跳过值为null或undefined的属性
+								// 替换特定字段，如{{fieldName}}
+								customTitle = customTitle.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(frontmatter[key]));
+							}
+							eventTitle = customTitle;
+						} else {
+							// 模板不包含变量，直接使用模板
+							eventTitle = titleTemplate;
 						}
 					}
 					
 					// 创建frontmatter事件
 					if (frontmatterDescription) {
 						events.push({
-							title: `${file.basename}[frontmatter]`,
+							title: eventTitle,
 							url: `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(file.path)}`,
 							description: frontmatterDescription,
 							start: [year, month, day],
@@ -424,7 +455,18 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 				}));
 				
 		new Setting(containerEl)
-			.setName('Frontmatter模板')
+			.setName('Frontmatter标题模板')
+			.setDesc('自定义Frontmatter日程的标题格式，可使用{{字段名}}引用特定字段，也可使用{{filename}}引用当前文件名')
+			.addText(text => text
+				.setPlaceholder('今日汇总')
+				.setValue(this.plugin.settings.frontmatterTitleTemplate)
+				.onChange(async (value) => {
+					this.plugin.settings.frontmatterTitleTemplate = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Frontmatter内容模板')
 			.setDesc('自定义Frontmatter内容的显示格式，可直接使用{{字段名}}引用特定字段')
 			.addText(text => text
 				.setPlaceholder('')
@@ -439,7 +481,9 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		templateExample.style.fontSize = '0.8em';
 		templateExample.style.color = '#888';
 		templateExample.createEl('div', {text: '1. 使用 "天气:{{weather}} 心情:{{mood}}" 将替换特定字段'});
-		templateExample.createEl('div', {text: '2. 留空则每行显示一个字段'});
+		templateExample.createEl('div', {text: '2. 使用 "{{filename}}的日记" 将替换为当前文件名（不含扩展名）'});
+		templateExample.createEl('div', {text: '3. 留空则使用默认格式（标题为文件名+[frontmatter]，内容为每行一个字段）'});
+		templateExample.createEl('div', {text: '4. 值为null的属性将被自动跳过'});
 		templateExample.style.marginBottom = '20px';
 
 		// 显示当前ICS订阅链接
