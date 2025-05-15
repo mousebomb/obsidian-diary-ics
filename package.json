@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-diary-ics",
 	"version": "1.0.6",
-	"description": "Sync Obsidian diary entries to system calendar via ICS feed.",
+	"description": "Sync diary entries to system calendar via ICS feed.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
