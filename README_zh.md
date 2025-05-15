@@ -4,6 +4,8 @@
 
 这是一个Obsidian插件，用于将Obsidian的日记系统内容同步到系统的日历应用中（如macOS日历、Windows日历等）。
 
+https://github.com/user-attachments/assets/7ceeb379-d0cf-450b-a368-7cbc77a09b8a
+
 ## 核心功能
 
 ### 生成ICS日历订阅文件
