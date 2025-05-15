@@ -4,6 +4,10 @@
 
 This is an Obsidian plugin that synchronizes content from Obsidian's diary system to the system calendar application (such as macOS Calendar, Windows Calendar, etc.).
 
+
+https://github.com/user-attachments/assets/5cca303c-9c91-4805-ad37-8213e5124f62
+
+
 ## Core Features
 
 ### Generate ICS Calendar Subscription File
