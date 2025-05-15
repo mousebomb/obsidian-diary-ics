@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import * as http from 'http';
 import { createEvents, EventAttributes } from 'ics';
 
@@ -165,10 +165,10 @@ export default class DiaryIcsPlugin extends Plugin {
 
 
 	// 解析日记文件，提取标题和次级标题
-	async parseDiaryFile(file: TFile): Promise<{title: string, subheadings: string[]}[]> {
+	async parseDiaryFile(file: TFile): Promise<{title: string, content :string }[]> {
 		// 使用Obsidian的缓存元数据获取标题信息
 		const fileCache = this.app.metadataCache.getFileCache(file);
-		const entries: {title: string, subheadings: string[]}[] = [];
+		const entries: {title: string, content : string }[] = [];
 
 		// 如果没有缓存或没有标题信息，则返回空数组
 		if (!fileCache || !fileCache.headings) {
@@ -200,20 +200,23 @@ export default class DiaryIcsPlugin extends Plugin {
 			// 查找子标题
 			const subheadings: string[] = [];
 			const subheadingsData = fileCache.headings?.filter(h =>
-				h.level === subheadingLevel &&
+				h.level > headingLevel &&
 				h.position.start.line > startLine &&
 				(nextHeading ? h.position.start.line < nextHeading.position.start.line : true)
 			) || [];
 
 			// 提取子标题文本
 			subheadingsData.forEach(sh => {
-				subheadings.push(sh.heading);
+				// 根据子级别的level 与主级别的level 计算缩进
+				const indentLevel = sh.level - subheadingLevel;
+				const indent = '  '.repeat(indentLevel);
+				subheadings.push( indent + sh.heading);
 			});
 
 			// 添加条目
 			entries.push({
 				title,
-				subheadings
+				content: subheadings.join('\n')
 			});
 		}
 
@@ -329,8 +332,8 @@ export default class DiaryIcsPlugin extends Plugin {
 				let description = '';
 
 				// 添加次级标题
-				if (this.settings.includeSubheadings && entry.subheadings && entry.subheadings.length > 0) {
-					description += "" + entry.subheadings.map(sh => `- ${sh}`).join('\n') + '\n\n';
+				if (this.settings.includeSubheadings && entry.content) {
+					description += "" + entry.content + '\n\n';
 				}
 
 				// 如果设置了包含内容，则添加内容
