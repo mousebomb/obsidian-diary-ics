@@ -522,28 +522,19 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings(false);
 				}));
 
-		const templateExample = containerEl.createEl('div', {text: locale.templateExampleTitle});
-		templateExample.style.padding = '5px';
-		templateExample.style.fontSize = '0.8em';
-		templateExample.style.color = '#888';
+		const templateExample = containerEl.createEl('div', {text: locale.templateExampleTitle, cls: 'diary-ics-template-example'});
 		templateExample.createEl('div', {text: locale.templateExample1});
 		templateExample.createEl('div', {text: locale.templateExample2});
 		templateExample.createEl('div', {text: locale.templateExample3});
 		templateExample.createEl('div', {text: locale.templateExample4});
-		templateExample.style.marginBottom = '20px';
 
 		// 显示当前ICS订阅链接
 		const localIP = this.plugin.getLocalIP();
 		containerEl.createEl('h3', {text: locale.icsLinkTitle});
-		const linkEl = containerEl.createEl('div', {text: `http://${localIP}:${this.plugin.settings.port}/feed.ics`});
-		linkEl.style.padding = '10px';
-		linkEl.style.backgroundColor = '#f5f5f5';
-		linkEl.style.borderRadius = '5px';
-		linkEl.style.marginBottom = '20px';
+		const linkEl = containerEl.createEl('div', {text: `http://${localIP}:${this.plugin.settings.port}/feed.ics`, cls: 'diary-ics-link-div'});
 
 		// 添加复制按钮
-		const copyButton = containerEl.createEl('button', {text: locale.copyLinkButton});
-		copyButton.style.marginBottom = '20px';
+		const copyButton = containerEl.createEl('button', {text: locale.copyLinkButton, cls: 'diary-ics-copy-button'});
 		copyButton.addEventListener('click', () => {
 			const url = `http://${localIP}:${this.plugin.settings.port}/feed.ics`;
 			navigator.clipboard.writeText(url);

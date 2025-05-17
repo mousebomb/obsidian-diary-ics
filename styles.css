@@ -6,3 +6,21 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+.diary-ics-template-example {
+  padding: 5px;
+  font-size: 0.8em;
+  color: #888;
+  margin-bottom: 20px;
+}
+
+.diary-ics-link-div {
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.diary-ics-copy-button {
+  margin-bottom: 20px;
+}
