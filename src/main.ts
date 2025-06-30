@@ -406,7 +406,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 
-		containerEl.createEl('h2', {text: locale.settingsTitle});
+		new Setting(containerEl).setName(locale.settingsTitle).setHeading();
 
 		new Setting(containerEl)
 			.setName(locale.portSetting)
@@ -428,7 +428,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					new Notice(locale.portApplied);
 				}));
 
-		containerEl.createEl('h3', {text: locale.contentSettingsTitle});
+		new Setting(containerEl).setName(locale.contentSettingsTitle).setHeading();
 
 		new Setting(containerEl)
 			.setName(locale.headingLevelSetting)
@@ -462,7 +462,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		// 			await this.plugin.saveSettings();
 		// 		}));
 
-		containerEl.createEl('h3', {text: locale.diarySettingsTitle});
+		new Setting(containerEl).setName(locale.diarySettingsTitle).setHeading();
 
 		new Setting(containerEl)
 			.setName(locale.diaryFormatSetting)
@@ -488,7 +488,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings(false);
 				}));
 
-		containerEl.createEl('h3', {text: locale.frontmatterSettingsTitle});
+		new Setting(containerEl).setName(locale.frontmatterSettingsTitle).setHeading();
 
 		new Setting(containerEl)
 			.setName(locale.includeFrontmatterSetting)
@@ -530,7 +530,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 
 		// 显示当前ICS订阅链接
 		const localIP = this.plugin.getLocalIP();
-		containerEl.createEl('h3', {text: locale.icsLinkTitle});
+		new Setting(containerEl).setName(locale.icsLinkTitle).setHeading();
 		const linkEl = containerEl.createEl('div', {text: `http://${localIP}:${this.plugin.settings.port}/feed.ics`, cls: 'diary-ics-link-div'});
 
 		// 添加复制按钮
@@ -542,7 +542,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		});
 
 		// 添加使用说明
-		containerEl.createEl('h3', {text: locale.instructionsTitle});
+		new Setting(containerEl).setName(locale.instructionsTitle).setHeading();
 		containerEl.createEl('p', {text: locale.instruction1});
 		containerEl.createEl('p', {text: locale.instruction2});
 		containerEl.createEl('p', {text: locale.instruction3});
