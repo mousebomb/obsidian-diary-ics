@@ -1,4 +1,4 @@
-import {addIcon, App, getLanguage, Notice, Plugin, PluginSettingTab, Setting, TFile} from 'obsidian';
+import {addIcon, App, getLanguage, Notice, Plugin, PluginSettingTab, Setting, TFile, moment} from 'obsidian';
 import * as http from 'http';
 import { createEvents, EventAttributes } from 'ics';
 import { networkInterfaces } from 'os';
@@ -176,7 +176,7 @@ export default class DiaryIcsPlugin extends Plugin {
 
 		// 使用moment库验证文件名是否符合日期格式
 		// @ts-ignore - window.moment 在Obsidian中已经内置
-		const moment = window.moment;
+		// const moment = window.moment;
 		if (!moment) {
 			console.error(this.locale.cannotGetMoment);
 			return false;
@@ -262,7 +262,7 @@ export default class DiaryIcsPlugin extends Plugin {
 		for (const file of files) {
 			// 从文件名解析日期，使用moment库根据配置的日记格式解析
 			// @ts-ignore - window.moment 在Obsidian中已经内置
-			const moment = window.moment;
+			// const moment = window.moment;
 			const date = moment(file.basename, this.dailyNoteFormat, true);
 			const year = date.year();
 			const month = date.month() + 1; // moment月份从0开始，需要+1
