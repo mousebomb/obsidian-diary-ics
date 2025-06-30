@@ -99,7 +99,7 @@ export default class DiaryIcsPlugin extends Plugin {
 		if (this.server) {
 			this.server.close();
 			this.server = null;
-			console.log('ICS HTTP server closed');
+			// console.log('ICS HTTP server closed');
 		}
 	}
 
@@ -133,7 +133,7 @@ export default class DiaryIcsPlugin extends Plugin {
 						'Content-Disposition': 'attachment; filename="obsidian-diary.ics"'
 					});
 					res.end(icsContent);
-					console.log(this.locale.fileProvided);
+					// console.log(this.locale.fileProvided);
 				} catch (error) {
 					console.error(this.locale.fileGenerationError + ':', error);
 					res.writeHead(500);
@@ -146,7 +146,7 @@ export default class DiaryIcsPlugin extends Plugin {
 		});
 
 		this.server.listen(port, '0.0.0.0', () => {
-			console.log(formatString(this.locale.serverStarted, localIP, port));
+			// console.log(formatString(this.locale.serverStarted, localIP, port));
 			new Notice(formatString(this.locale.serverStarted, localIP, port));
 		});
 
@@ -196,7 +196,7 @@ export default class DiaryIcsPlugin extends Plugin {
 
 		// 如果没有缓存或没有标题信息，则返回空数组
 		if (!fileCache || !fileCache.headings) {
-			console.log(formatString(this.locale.cannotGetFileCache, file.path));
+			// console.log(formatString(this.locale.cannotGetFileCache, file.path));
 			return [];
 		}
 
@@ -208,7 +208,7 @@ export default class DiaryIcsPlugin extends Plugin {
 		// const content = await this.app.vault.read(file);
 		// const lines = content.split('\n');
 
-		console.log (" 解析日记文件: ", file.path, " 解析标题: ", fileCache.headings);
+		// console.log (" 解析日记文件: ", file.path, " 解析标题: ", fileCache.headings);
 		// 筛选出指定级别的标题
 		const mainHeadings = fileCache.headings?.filter(h => h.level === headingLevel) || [];
 
@@ -251,7 +251,7 @@ export default class DiaryIcsPlugin extends Plugin {
 	async generateIcsContent(): Promise<string> {
 		const events: EventAttributes[] = [];
 		const vaultName = this.app.vault.getName();
-		console.log(formatString(this.locale.generatingIcsContent, vaultName));
+		// console.log(formatString(this.locale.generatingIcsContent, vaultName));
 
 		// 获取所有日记文件
 		const files = this.app.vault.getMarkdownFiles()
@@ -268,7 +268,7 @@ export default class DiaryIcsPlugin extends Plugin {
 			const month = date.month() + 1; // moment月份从0开始，需要+1
 			const day = date.date();
 			const entries = await this.parseDiaryFile(file);
-			console.log (" 解析日记文件: ", file.path, " 解析条目: ", entries.length, " 条");
+			// console.log (" 解析日记文件: ", file.path, " 解析条目: ", entries.length, " 条");
 
 			// 处理frontmatter，如果设置了包含frontmatter
 			if (this.settings.includeFrontmatter) {
