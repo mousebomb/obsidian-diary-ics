@@ -166,9 +166,10 @@ const zh: LanguageStrings = {
 };
 
 // 格式化字符串，替换{0}, {1}等占位符
-function formatString(str: string, ...args: any[]): string {
-    return str.replace(/{(\d+)}/g, (match, index) => {
-        return typeof args[index] !== 'undefined' ? args[index] : match;
+function formatString(str: string, ...args: unknown[]): string {
+    return str.replace(/{(\d+)}/g, (match, indexStr) => {
+        const index = parseInt(indexStr, 10);
+        return typeof args[index] !== 'undefined' ? String(args[index]) : match;
     });
 }
 
