@@ -1,4 +1,4 @@
-# Obsidian Diary ICS
+# Diary ICS
 
 中文 | [English](README.md)
 
