@@ -18,7 +18,6 @@ interface LanguageStrings {
     copyIcsUrlCommand: string;
 
     // 设置页面
-    settingsTitle: string;
     portSetting: string;
     portDesc: string;
 	applyButton: string;
@@ -73,7 +72,6 @@ const en: LanguageStrings = {
     copyIcsUrlCommand: "Copy ICS subscription link",
 
     // 设置页面
-    settingsTitle: "Diary ICS",
     portSetting: "HTTP server port",
     portDesc: "Port used by the local HTTP server",
 	applyButton: "Apply",
@@ -128,7 +126,6 @@ const zh: LanguageStrings = {
     copyIcsUrlCommand: "复制ICS订阅链接",
 
     // 设置页面
-    settingsTitle: "日记日历订阅设置",
     portSetting: "HTTP服务器端口",
     portDesc: "本地HTTP服务器使用的端口号",
 	applyButton: "应用",

@@ -406,7 +406,7 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 
-		new Setting(containerEl).setName(locale.settingsTitle).setHeading();
+		
 
 		new Setting(containerEl)
 			.setName(locale.portSetting)
