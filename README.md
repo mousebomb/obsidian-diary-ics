@@ -43,7 +43,7 @@ If you don't know frontmatter, you can refer to the [official documentation](htt
 
 Examples of titles that can be parsed:
 - `## 10:00~12:00 Team Meeting` will be parsed as a meeting from 10:00 to 12:00
-- `## Team Meeting 10:00` will be parsed as a meeting from 10:00 to 11:00 (default end time is 1 hour after start time)
+- `## Team Meeting 10:00` will be parsed as a meeting from 10:00 to 11:00 (default end time is 1 hour after start time, user can set default duration in plugin settings)
 - `## Outdoor Walk` will be parsed as an all-day event
 
 
