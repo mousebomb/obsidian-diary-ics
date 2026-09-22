@@ -17,6 +17,8 @@ interface DiaryIcsSettings {
 	diaryFolder: string;
 	// 时间提取设置
 	extractTimeRange: boolean;
+	// 默认日程时长（分钟）：仅提取到开始时间时生效
+	defaultEventDuration: number;
 }
 
 const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
@@ -31,7 +33,8 @@ const DEFAULT_SETTINGS: DiaryIcsSettings = {
 	frontmatterTitleTemplate: '',
 	diaryFormat: DEFAULT_DAILY_NOTE_FORMAT,
 	diaryFolder: '',
-	extractTimeRange: true
+	extractTimeRange: true,
+	defaultEventDuration: 60
 }
 
 export default class DiaryIcsPlugin extends Plugin {
@@ -370,7 +373,7 @@ export default class DiaryIcsPlugin extends Plugin {
 				let eventDuration: { days?: number; hours?: number; minutes?: number } = {days: 1}; // 默认为全天事件
 				
 				if (this.settings.extractTimeRange) {
-					const timeResult = this.extractTimeFromTitle(entry.title);
+					const timeResult = this.extractTimeFromTitle(entry.title, this.settings.defaultEventDuration);
 					eventTitle = timeResult.cleanTitle;
 					
 					if (timeResult.hasTime && timeResult.startTime) {
@@ -424,8 +427,8 @@ export default class DiaryIcsPlugin extends Plugin {
 		});
 	}
 
-	// 从标题中提取时间范围
-	extractTimeFromTitle(title: string): { hasTime: boolean; startTime?: [number, number]; endTime?: [number, number]; cleanTitle: string } {
+	// 从标题中提取时间范围（defaultDurationMinutes：仅提取到开始时间时使用的默认时长，单位分钟）
+	extractTimeFromTitle(title: string, defaultDurationMinutes: number): { hasTime: boolean; startTime?: [number, number]; endTime?: [number, number]; cleanTitle: string } {
 		// 匹配格式：HH:mm~HH:mm 或 09:00~10:00
 		const timeRangeRegex = /(?<!\d)(\d{1,2}):(\d{2})\s*[~～\-]\s*(\d{1,2}):(\d{2})(?!\d)/;
 		// 匹配单个时间：HH:mm 或 09:00
@@ -458,15 +461,19 @@ export default class DiaryIcsPlugin extends Plugin {
 
 			const hour = parseInt(singleMatch[1], 10);
 			const minute = parseInt(singleMatch[2], 10);
-			
+
+			// 仅提取到开始时间时，按默认时长（分钟）计算结束时间（取模24以支持跨天）
+			const totalMinutes = hour * 60 + minute + defaultDurationMinutes;
+			const endHour = Math.floor(totalMinutes / 60) % 24;
+			const endMinute = totalMinutes % 60;
+
 			// 清理标题中的时间部分
 			const cleanTitle = title.replace(singleTimeRegex, '').trim();
-			
+
 			return {
 				hasTime: true,
 				startTime: [hour, minute],
-				// 单个时间默认1小时后结束
-				endTime: [(hour + 1) % 24, minute],
+				endTime: [endHour, endMinute],
 				cleanTitle
 			};
 		}
@@ -545,6 +552,22 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 			.onChange(async (value) => {
 				this.plugin.settings.extractTimeRange = value;
 				await this.plugin.saveSettings(false);
+			}));
+
+		// 默认日程时长：仅提取到开始时间、没有结束时间时生效
+		new Setting(containerEl)
+		.setName(locale.defaultDurationSetting)
+		.setDesc(locale.defaultDurationDesc)
+		.addText(text => text
+			.setPlaceholder('60')
+			.setValue(this.plugin.settings.defaultEventDuration.toString())
+			.onChange(async (value) => {
+				const minutes = parseInt(value);
+				// 只接受有效的正整数，避免输入非法值
+				if (!isNaN(minutes) && minutes > 0) {
+					this.plugin.settings.defaultEventDuration = minutes;
+					await this.plugin.saveSettings(false);
+				}
 			}));
 
 		
