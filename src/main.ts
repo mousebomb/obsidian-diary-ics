@@ -584,9 +584,9 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 						text.setValue(digits);
 						return;
 					}
-					// 值必须大于0，任何非法输入（空、0等）一律兜底为默认60分钟
+					// 值必须大于0且小于1440（时长计算依赖跨天补偿，1440及以上会导致时长算错），非法或超限输入一律兜底为默认60分钟
 					const minutes = parseInt(digits);
-					if (digits !== '' && !isNaN(minutes) && minutes > 0) {
+					if (digits !== '' && !isNaN(minutes) && minutes > 0 && minutes < 1440) {
 						this.plugin.settings.defaultEventDuration = minutes;
 					} else {
 						this.plugin.settings.defaultEventDuration = 60;

@@ -100,7 +100,7 @@ const en: LanguageStrings = {
     extractTimeRangeExample3: "## 19:00 Out and meet with colleagues",
     extractTimeRangeExample4: "## Go to park and play badminton 10:00",
     defaultDurationSetting: "Default event duration",
-    defaultDurationDesc: "Duration in minutes for events that only have a start time (default: 60)",
+    defaultDurationDesc: "Duration in minutes for events that only have a start time, up to 24 hours (default: 60)",
 
     diarySettingsTitle: "Diary",
     diaryFormatSetting: "Diary naming format",
@@ -164,7 +164,7 @@ const zh: LanguageStrings = {
     extractTimeRangeExample3: "## 19:00出门和同事聚餐",
     extractTimeRangeExample4: "## 去公园打羽毛球10:00",
     defaultDurationSetting: "默认日程时长",
-    defaultDurationDesc: "标题中仅提取到开始时间、没有结束时间时，日程的持续时长（分钟），默认60分钟",
+    defaultDurationDesc: "标题中仅提取到开始时间、没有结束时间时，日程的持续时长（分钟，最长不超过24小时），默认60分钟",
     diarySettingsTitle: "日记设置",
     diaryFormatSetting: "日记命名格式",
     diaryFormatDesc: "日记文件的命名格式，例如YYYY-MM-DD",
