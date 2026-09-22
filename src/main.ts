@@ -443,18 +443,24 @@ export default class DiaryIcsPlugin extends Plugin {
 			const endHour = parseInt(rangeMatch[3], 10);
 			const endMinute = parseInt(rangeMatch[4], 10);
 
-			
-			// 清理标题中的时间部分
-			const cleanTitle = title.replace(timeRangeRegex, '').trim();
-			
-			return {
-				hasTime: true,
-				startTime: [startHour, startMinute],
-				endTime: [endHour, endMinute],
-				cleanTitle
-			};
+			// 时间合法性校验：小时≤23且分钟≤59（ics库会拒绝非法时间，导致整个订阅生成失败HTTP 500）
+			// "24:00" 表示当天结束，规范化为次日 0:00（调用方的跨天补偿会算出正确时长）
+			// 非法时间（如 25:30、10:99）降级为无时间，该条目回退为全天事件
+			const normalizedEndHour = (endHour === 24 && endMinute === 0) ? 0 : endHour;
+			if (startHour <= 23 && startMinute <= 59 && normalizedEndHour <= 23 && endMinute <= 59) {
+				// 清理标题中的时间部分
+				const cleanTitle = title.replace(timeRangeRegex, '').trim();
+
+				return {
+					hasTime: true,
+					startTime: [startHour, startMinute],
+					endTime: [normalizedEndHour, endMinute],
+					cleanTitle
+				};
+			}
+			// 时间非法 → 继续往下返回无时间
 		}
-		
+
 		// 然后尝试匹配单个时间
 		const singleMatch = title.match(singleTimeRegex);
 		if (singleMatch) {
@@ -462,20 +468,25 @@ export default class DiaryIcsPlugin extends Plugin {
 			const hour = parseInt(singleMatch[1], 10);
 			const minute = parseInt(singleMatch[2], 10);
 
-			// 仅提取到开始时间时，按默认时长（分钟）计算结束时间（取模24以支持跨天）
-			const totalMinutes = hour * 60 + minute + defaultDurationMinutes;
-			const endHour = Math.floor(totalMinutes / 60) % 24;
-			const endMinute = totalMinutes % 60;
+			// 时间合法性校验：小时≤23且分钟≤59，非法时间（如 "24:00"、"10:99"）降级为无时间，
+			// 避免 ics 库校验失败导致整个订阅生成失败（HTTP 500）
+			if (hour <= 23 && minute <= 59) {
+				// 仅提取到开始时间时，按默认时长（分钟）计算结束时间（取模24以支持跨天）
+				const totalMinutes = hour * 60 + minute + defaultDurationMinutes;
+				const endHour = Math.floor(totalMinutes / 60) % 24;
+				const endMinute = totalMinutes % 60;
 
-			// 清理标题中的时间部分
-			const cleanTitle = title.replace(singleTimeRegex, '').trim();
+				// 清理标题中的时间部分
+				const cleanTitle = title.replace(singleTimeRegex, '').trim();
 
-			return {
-				hasTime: true,
-				startTime: [hour, minute],
-				endTime: [endHour, endMinute],
-				cleanTitle
-			};
+				return {
+					hasTime: true,
+					startTime: [hour, minute],
+					endTime: [endHour, endMinute],
+					cleanTitle
+				};
+			}
+			// 时间非法 → 继续往下返回无时间
 		}
 		
 		// 没有找到时间
