@@ -1,5 +1,6 @@
 import {App, getLanguage, Notice, Plugin, PluginSettingTab, Setting, TFile, moment} from 'obsidian';
 import * as http from 'http';
+import type {IncomingMessage, ServerResponse} from 'http';
 import { createEvents, EventAttributes } from 'ics';
 import { networkInterfaces } from 'os';
 import { getLocalizedStrings, formatString } from './lang';
@@ -69,12 +70,11 @@ export default class DiaryIcsPlugin extends Plugin {
 
 		const localIP = this.getLocalIP();
 
-		// 添加图标到左侧边栏
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const ribbonIconEl = this.addRibbonIcon('calendar-heart', this.locale.pluginName, (evt: MouseEvent) => {
-			// 点击图标时显示ICS订阅链接 并复制到剪贴板
+		// 添加图标到左侧边栏（点击显示ICS订阅链接并复制到剪贴板）
+		this.addRibbonIcon('calendar-heart', this.locale.pluginName, () => {
 			const url = `http://${localIP}:${this.settings.port}/feed.ics`;
-			navigator.clipboard.writeText(url);
+			// 剪贴板写入为异步操作，无需等待其完成（失败不影响 Notice 提示）
+			void navigator.clipboard.writeText(url);
 			new Notice(`${this.locale.pluginName}: http://${localIP}:${this.settings.port}/feed.ics \n${this.locale.copySuccess}`);
 		});
 
@@ -85,7 +85,8 @@ export default class DiaryIcsPlugin extends Plugin {
 			name: this.locale.copyIcsUrlCommand,
 			callback: () => {
 				const url = `http://${localIP}:${this.settings.port}/feed.ics`;
-				navigator.clipboard.writeText(url);
+				// 剪贴板写入为异步操作，无需等待其完成
+				void navigator.clipboard.writeText(url);
 				new Notice(this.locale.copySuccess);
 			}
 		});
@@ -127,26 +128,9 @@ export default class DiaryIcsPlugin extends Plugin {
 		const port = this.settings.port;
 		const localIP = this.getLocalIP();
 
-		this.server = http.createServer(async (req, res) => {
-			if (req.url === '/feed.ics') {
-				try {
-					const icsContent = await this.generateIcsContent();
-
-					res.writeHead(200, {
-						'Content-Type': 'text/calendar',
-						'Content-Disposition': 'attachment; filename="obsidian-diary.ics"'
-					});
-					res.end(icsContent);
-					// console.log(this.locale.fileProvided);
-				} catch (error) {
-					console.error(this.locale.fileGenerationError + ':', error);
-					res.writeHead(500);
-					res.end(this.locale.fileGenerationError);
-				}
-			} else {
-				res.writeHead(404);
-				res.end(this.locale.notFound);
-			}
+		// 回调必须同步返回 void，异步逻辑抽到 handleFeedRequest 中
+		this.server = http.createServer((req, res) => {
+			void this.handleFeedRequest(req, res);
 		});
 
 		this.server.listen(port, '0.0.0.0', () => {
@@ -158,6 +142,29 @@ export default class DiaryIcsPlugin extends Plugin {
 			console.error(this.locale.serverError.replace('{0}', ''), error);
 			new Notice(formatString(this.locale.serverError, error.message));
 		});
+	}
+
+	// 处理 ICS 订阅请求：/feed.ics 返回日历内容，其余返回 404
+	private async handleFeedRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+		if (req.url === '/feed.ics') {
+			try {
+				const icsContent = await this.generateIcsContent();
+
+				res.writeHead(200, {
+					'Content-Type': 'text/calendar',
+					'Content-Disposition': 'attachment; filename="obsidian-diary.ics"'
+				});
+				res.end(icsContent);
+				// console.log(this.locale.fileProvided);
+			} catch (error) {
+				console.error(this.locale.fileGenerationError + ':', error);
+				res.writeHead(500);
+				res.end(this.locale.fileGenerationError);
+			}
+		} else {
+			res.writeHead(404);
+			res.end(this.locale.notFound);
+		}
 	}
 
 	// 获取日记设置（从插件自身的设置中获取）
@@ -430,7 +437,7 @@ export default class DiaryIcsPlugin extends Plugin {
 	// 从标题中提取时间范围（defaultDurationMinutes：仅提取到开始时间时使用的默认时长，单位分钟）
 	extractTimeFromTitle(title: string, defaultDurationMinutes: number): { hasTime: boolean; startTime?: [number, number]; endTime?: [number, number]; cleanTitle: string } {
 		// 匹配格式：HH:mm~HH:mm 或 09:00~10:00
-		const timeRangeRegex = /(?<!\d)(\d{1,2}):(\d{2})\s*[~～\-]\s*(\d{1,2}):(\d{2})(?!\d)/;
+		const timeRangeRegex = /(?<!\d)(\d{1,2}):(\d{2})\s*[~～-]\s*(\d{1,2}):(\d{2})(?!\d)/;
 		// 匹配单个时间：HH:mm 或 09:00
 		const singleTimeRegex = /(?<!\d)(\d{1,2}):(\d{2})(?!\d)/;
 		
@@ -596,11 +603,11 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		});
 
 		
-		const extractTimeExample = containerEl.createEl('div', {text: locale.extractTimeRangeExampleTitle, cls: 'diary-ics-template-example'});
-		extractTimeExample.createEl('div', {text: locale.extractTimeRangeExample1});
-		extractTimeExample.createEl('div', {text: locale.extractTimeRangeExample2});
-		extractTimeExample.createEl('div', {text: locale.extractTimeRangeExample3});
-		extractTimeExample.createEl('div', {text: locale.extractTimeRangeExample4});
+		const extractTimeExample = containerEl.createDiv({text: locale.extractTimeRangeExampleTitle, cls: 'diary-ics-template-example'});
+		extractTimeExample.createDiv({text: locale.extractTimeRangeExample1});
+		extractTimeExample.createDiv({text: locale.extractTimeRangeExample2});
+		extractTimeExample.createDiv({text: locale.extractTimeRangeExample3});
+		extractTimeExample.createDiv({text: locale.extractTimeRangeExample4});
 
 		// new Setting(containerEl)
 		// 	.setName('包含内容')
@@ -672,16 +679,16 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings(false);
 				}));
 
-		const templateExample = containerEl.createEl('div', {text: locale.templateExampleTitle, cls: 'diary-ics-template-example'});
-		templateExample.createEl('div', {text: locale.templateExample1});
-		templateExample.createEl('div', {text: locale.templateExample2});
-		templateExample.createEl('div', {text: locale.templateExample3});
-		templateExample.createEl('div', {text: locale.templateExample4});
+		const templateExample = containerEl.createDiv({text: locale.templateExampleTitle, cls: 'diary-ics-template-example'});
+		templateExample.createDiv({text: locale.templateExample1});
+		templateExample.createDiv({text: locale.templateExample2});
+		templateExample.createDiv({text: locale.templateExample3});
+		templateExample.createDiv({text: locale.templateExample4});
 
 		// 显示当前ICS订阅链接
 		const localIP = this.plugin.getLocalIP();
 		new Setting(containerEl).setName(locale.icsLinkTitle).setHeading();
-		const linkEl = containerEl.createEl('div', {text: `http://${localIP}:${this.plugin.settings.port}/feed.ics`, cls: 'diary-ics-link-div'});
+		containerEl.createDiv({text: `http://${localIP}:${this.plugin.settings.port}/feed.ics`, cls: 'diary-ics-link-div'});
 
 		// 添加复制按钮
 		const copyButton = containerEl.createEl('button', {text: locale.copyLinkButton, cls: 'diary-ics-copy-button'});

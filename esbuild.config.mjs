@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
+// 使用 Node 内置 API 获取内建模块清单，替代第三方包 builtin-modules
+import { builtinModules } from "node:module";
 
 const banner =
 `/*
@@ -31,7 +32,7 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
-		...builtins],
+		...builtinModules],
 	format: "cjs",
 	target: "es2018",
 	logLevel: "info",
