@@ -558,17 +558,31 @@ class DiaryIcsSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 		.setName(locale.defaultDurationSetting)
 		.setDesc(locale.defaultDurationDesc)
-		.addText(text => text
-			.setPlaceholder('60')
-			.setValue(this.plugin.settings.defaultEventDuration.toString())
-			.onChange(async (value) => {
-				const minutes = parseInt(value);
-				// 只接受有效的正整数，避免输入非法值
-				if (!isNaN(minutes) && minutes > 0) {
-					this.plugin.settings.defaultEventDuration = minutes;
+		.addText(text => {
+			// 失焦时将输入框恢复为实际生效的值，避免非法输入残留在界面上
+			text.inputEl.addEventListener('blur', () => {
+				text.setValue(String(this.plugin.settings.defaultEventDuration));
+			});
+			return text
+				.setPlaceholder('60')
+				.setValue(this.plugin.settings.defaultEventDuration.toString())
+				.onChange(async (value) => {
+					// 强制只能输入数字：实时过滤掉所有非数字字符
+					const digits = value.replace(/\D/g, '');
+					if (digits !== value) {
+						text.setValue(digits);
+						return;
+					}
+					// 值必须大于0，任何非法输入（空、0等）一律兜底为默认60分钟
+					const minutes = parseInt(digits);
+					if (digits !== '' && !isNaN(minutes) && minutes > 0) {
+						this.plugin.settings.defaultEventDuration = minutes;
+					} else {
+						this.plugin.settings.defaultEventDuration = 60;
+					}
 					await this.plugin.saveSettings(false);
-				}
-			}));
+				});
+		});
 
 		
 		const extractTimeExample = containerEl.createEl('div', {text: locale.extractTimeRangeExampleTitle, cls: 'diary-ics-template-example'});
